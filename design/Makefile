@@ -4,17 +4,21 @@
 DOCFILES=$(wildcard *.asciidoc)
 
 HTML_TARGETS=$(addsuffix .html, $(basename $(DOCFILES)))
+PDF_TARGETS=$(addsuffix .pdf, $(basename $(DOCFILES)))
 
-# just use asciidoc defaults right now to get us up and running.
-# We'll want to move to a2x to generate the output in future so we can add
-# things like table of contents and format directly into pdf, etc.
 %.html: %.asciidoc
 	@echo "[html] $*"
-	$(Q)asciidoc $<
+	$(Q)a2x -f xhtml $<
 
-all: html
+%.pdf: %.asciidoc
+	@echo "[pdf] $*"
+	$(Q)a2x -f pdf $<
+
+all: html pdf
 
 html: $(HTML_TARGETS)
 
+pdf: $(PDF_TARGETS)
+
 clean:
-	@rm -f *.html
+	@rm -f *.html *.css
