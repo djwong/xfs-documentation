@@ -1,0 +1,17 @@
+XFS Documentation README
+________________________
+
+This source tree contains the raw documentation for the XFS project.
+For more information and details on how to contribute to the
+XFS project see the web pages at:
+	http://xfs.org/
+
+The documentation within this repository is written in ASCIIDOC, and
+is designed to be as format neutral as possible. Information on
+ASCIIDOC can be found here:
+	http://asciidoc.org/
+
+The intent is to be able to build the documentation into the format
+you require for publication simply by building a different target.
+See the file INSTALL for build, installation and post-install
+configuration steps.
