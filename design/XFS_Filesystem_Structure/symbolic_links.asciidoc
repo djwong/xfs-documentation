@@ -1,0 +1,81 @@
+[[Symbolic_Links]]
+= Symbolic Links
+
+Symbolic links to a file can be stored in one of two formats: "local" and
+"extents". The length of the symlink contents is always specified by the inode's
++di_size+ value.
+
+
+[[Shortform_Symbolic_Links]]
+== Shortform Symbolic Links
+
+Symbolic links are stored with the "local" +di_format+ if the symbolic link can
+fit within the inode's data fork. The link data is an array of characters
+(+di_symlink+ array in the data fork union).
+
+.Symbolic link shortform layout
+image::images/61.png[]
+
+=== Shortform symbolic link xfs_db example
+
+A short symbolic link to a file is created:
+
+----
+xfs_db> inode <inode#>
+xfs_db> p
+core.magic = 0x494e
+core.mode = 0120777
+core.version = 1
+core.format = 1 (local)
+...
+core.size = 12
+core.nblocks = 0
+core.extsize = 0
+core.nextents = 0
+...
+u.symlink = "small_target"
+----
+
+Raw on-disk data with the link contents highlighted:
+
+.Shortform symbolic link format
+image::images/code/61.png[]
+
+
+[[Extent_Symbolic_Links]]
+== Extent Symbolic Links
+
+If the length of the symbolic link exceeds the space available in the inode's
+data fork, the link is moved to a new filesystem block and the inode's
++di_format+ is changed to "extents". The location of the block(s) is specified
+by the data fork's +di_bmx[]+ array. In the significant majority of cases, this
+will be in one filesystem block as a symlink cannot be longer than 1024
+characters.
+
+.Symbolic link extent layout
+image::images/62.png[]
+
+=== Symbolic link extent xfs_db example
+
+A longer link is created (greater than 156 bytes):
+
+----
+xfs_db> inode <inode#>
+xfs_db> p
+core.magic = 0x494e
+core.mode = 0120777
+core.version = 1
+core.format = 2 (extents)
+...
+core.size = 182
+core.nblocks = 1
+core.extsize = 0
+core.nextents = 1
+...
+u.bmx[0] = [startoff,startblock,blockcount,extentflag] 0:[0,37530,1,0]
+xfs_db> dblock 0
+xfs_db> type symlink
+xfs_db> p
+"symlink contents..."
+----
+

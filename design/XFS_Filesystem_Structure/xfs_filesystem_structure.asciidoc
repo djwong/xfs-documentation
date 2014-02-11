@@ -1,0 +1,53 @@
+// This is based on a multi-book template where each chapter uses level 1
+// headings. See doc/multi-book.txt as the example from asciidoc documentation.
+//
+// We pull in the document info in xml format from docinfo.xml. We do this
+// because asciidoc is unable to handle multiple entry revision histories,
+// and we really need an area to set up various docbook sections like copyright
+// and legal notice sections.
+//
+XFS Filesystem Structure
+========================
+:doctype: book
+:docinfo1:
+
+Introduction
+============
+
+[partintro]
+--
+This document describes the layout of an XFS filesystem.
+
+It shows how to manually inspect it by showing examples using the xfs_db
+user-space tool supplied with the XFS filesystem driver.
+
+TODO: More description.
+--
+
+// Push titles down one level
+:leveloffset: 1
+
+include::common_types.asciidoc[]
+
+// return titles to normal
+:leveloffset: 0
+
+Global Structures
+=================
+
+:leveloffset: 1
+include::allocation_groups.asciidoc[]
+include::journaling_log.asciidoc[]
+include::internal_inodes.asciidoc[]
+:leveloffset: 0
+
+Dynamically Allocated Structures
+================================
+
+:leveloffset: 1
+include::ondisk_inode.asciidoc[]
+include::data_extents.asciidoc[]
+include::extended_attributes.asciidoc[]
+include::directories.asciidoc[]
+include::symbolic_links.asciidoc[]
+:leveloffset: 0

@@ -1,0 +1,782 @@
+[[Allocation_Groups]]
+= Allocation Groups
+
+XFS filesystems are divided into a number of equally sized chunks called
+Allocation Groups. Each AG can almost be thought of as an individual filesystem
+that maintains it's own space usage. Each AG can be up to one terabyte in size
+(512 bytes * 2^31^), regardless of the underlying
+device's sector size.
+
+Each AG has the following characteristics:
+
+         * A super block describing overall filesystem info
+         * Free space management
+         * Inode allocation and tracking
+
+Having multiple AGs allows XFS to handle most operations in parallel without
+degrading performance as the number of concurrent accessing increases.
+
+The only global information maintained by the first AG (primary) is free spac e
+across the filesystem and total inode counts. If the
++XFS_SB_VERSION2_LAZYSBCOUNTBIT+ flag is set in the superblock, these are only
+updated on-disk when the filesystem is cleanly unmounted (umount or shutdown).
+
+Immediately after a mkfs.xfs, the primary AG has the following disk layout the
+subsequent AGs do not have any inodes allocated:
+
+.Allocation group layout
+image::images/6.png[]
+
+Each of these structures are expanded upon in the following sections.
+
+[[Superblocks]]
+== Superblocks
+
+Each AG starts with a superblock. The first one is the primary superblock that
+stores aggregate AG information. Secondary superblocks are only used by
+xfs_repair when the primary superblock has been corrupted.
+
+The superblock is defined by the following structure. The description of each
+field follows.
+
+TODO: update for v5 formats.
+
+[source, c]
+----
+struct xfs_sb
+{
+	__uint32_t		sb_magicnum;
+	__uint32_t		sb_blocksize;
+	xfs_drfsbno_t		sb_dblocks;
+	xfs_drfsbno_t		sb_rblocks;
+	xfs_drtbno_t		sb_rextents;
+	uuid_t			sb_uuid;
+	xfs_dfsbno_t		sb_logstart;
+	xfs_ino_t		sb_rootino;
+	xfs_ino_t		sb_rbmino;
+	xfs_ino_t		sb_rsumino;
+	xfs_agblock_t		sb_rextsize;
+	xfs_agblock_t		sb_agblocks;
+	xfs_agnumber_t		sb_agcount;
+	xfs_extlen_t		sb_rbmblocks;
+	xfs_extlen_t		sb_logblocks;
+	__uint16_t		sb_versionnum;
+	__uint16_t		sb_sectsize;
+	__uint16_t		sb_inodesize;
+	__uint16_t		sb_inopblock;
+	char			sb_fname[12];
+	__uint8_t		sb_blocklog;
+	__uint8_t		sb_sectlog;
+	__uint8_t		sb_inodelog;
+	__uint8_t		sb_inopblog;
+	__uint8_t		sb_agblklog;
+	__uint8_t		sb_rextslog;
+	__uint8_t		sb_inprogress;
+	__uint8_t		sb_imax_pct;
+	__uint64_t		sb_icount;
+	__uint64_t		sb_ifree;
+	__uint64_t		sb_fdblocks;
+	__uint64_t		sb_frextents;
+	xfs_ino_t		sb_uquotino;
+	xfs_ino_t		sb_gquotino;
+	__uint16_t		sb_qflags;
+	__uint8_t		sb_flags;
+	__uint8_t		sb_shared_vn;
+	xfs_extlen_t		sb_inoalignmt;
+	__uint32_t		sb_unit;
+	__uint32_t		sb_width;
+	__uint8_t		sb_dirblklog;
+	__uint8_t		sb_logsectlog;
+	__uint16_t		sb_logsectsize;
+	__uint32_t		sb_logsunit;
+	__uint32_t		sb_features2;
+};
+----
+.sb_magicnum
+Identifies the filesystem. It's value is +XFS_SB_MAGIC = 0x58465342 "XFSB"+.
+
+.sb_blocksize
+The size of a basic unit of space allocation in bytes. Typically, this is 4096
+(4KB) but can range from 512 to 65536 bytes.
+
+.sb_dblocks
+Total number of blocks available for data and metadata on the filesystem.
+
+.sb_rblocks
+Number blocks in the real-time disk device. Refer to
+xref:Real-time_Devices[real-time sub-volumes] for more information.
+
+.sb_rextents
+Number of extents on the real-time device.
+
+.sb_uuid
+UUID (Universally Unique ID) for the filesystem. Filesystems can be mounted by
+the UUID instead of device name.
+
+.sb_logstart
+First block number for the journaling log if the log is internal (ie. not on a
+separate disk device). For an external log device, this will be zero (the log
+will also start on the first block on the log device).
+
+.sb_rootino
+Root inode number for the filesystem. Typically, this is 128 when using a
+4KB block size.
+
+.sb_rbmino
+Bitmap inode for real-time extents.
+
+.sb_rsumino
+Summary inode for real-time bitmap.
+
+.sb_rextsize
+Realtime extent size in blocks.
+
+.sb_agblocks
+Size of each AG in blocks. For the actual size of the last AG, refer to the
+xref:AG_Free_Space_Management[free space] +agf_length+ value.
+
+.sb_agcount
+Number of AGs in the filesystem.
+
+.sb_rbmblocks
+Number of real-time bitmap blocks.
+
+.sb_logblocks
+Number of blocks for the journaling log.
+
+.sb_versionnum
+Filesystem version number. This is a bitmask specifying the features enabled
+when creating the filesystem. Any disk checking tools or drivers that do not
+recognize any set bits must not operate upon the filesystem. Most of the flagsi
+indicate features introduced over time. The value must be 4 including the
+following flags:
+
+.Version 4 Superblock version flags
+[options="header"]
+|=====
+| Flag				| Description
+| +XFS_SB_VERSION_ATTRBIT+	| Set if any inode have extended attributes.
+| +XFS_SB_VERSION_NLINKBIT+	| Set if any inodes use 32-bit di_nlink values.
+| +XFS_SB_VERSION_QUOTABIT+	|
+Quotas are enabled on the filesystem. This
+also brings in the various quota fields in the superblock.
+
+| +XFS_SB_VERSION_ALIGNBIT+	| Set if sb_inoalignmt is used.
+| +XFS_SB_VERSION_DALIGNBIT+	| Set if sb_unit and sb_width are used.
+| +XFS_SB_VERSION_SHAREDBIT+	| Set if sb_shared_vn is used.
+| +XFS_SB_VERSION_LOGV2BIT+	| Version 2 journaling logs are used.
+| +XFS_SB_VERSION_SECTORBIT+	| Set if sb_sectsize is not 512.
+| +XFS_SB_VERSION_EXTFLGBIT+	| Unwritten extents are used. This is always set.
+| +XFS_SB_VERSION_DIRV2BIT+	|
+Version 2 directories are used. This is always set.
+
+| +XFS_SB_VERSION_MOREBITSBIT+	|
+Set if the sb_features2 field in the superblock contains more flags.
+|=====
+
+.sb_sectsize
+Specifies the underlying disk sector size in bytes. Majority of the time, this
+is 512 bytes. This determines the minimum I/O alignment including Direct I/O.
+
+.sb_inodesize
+Size of the inode in bytes. The default is 256 (2 inodes per standard sector)
+but can be made as large as 2048 bytes when creating the filesystem.
+
+.sb_inopblock
+Number of inodes per block. This is equivalent to +sb_blocksize / sb_inodesize+.
+
+.sb_fname[12]
+Name for the filesystem. This value can be used in the mount command.
+
+.sb_blocklog
+log~2~ value of +sb_blocksize+. In other terms, +sb_blocksize = 2^sb_blocklog^+.
+
+.sb_sectlog
+log~2~ value of +sb_sectsize+.
+
+.sb_inodelog
+log~2~ value of +sb_inodesize+.
+
+.sb_inopblog
+log~2~ value of +sb_inopblock+.
+
+.sb_agblklog
+log~2~ value of +sb_agblocks+ (rounded up). This value is used to generate inode
+numbers and absolute block numbers defined in extent maps.
+
+.sb_rextslog
+log~2~ value of +sb_rextents+.
+
+.sb_inprogress
+Flag specifying that the filesystem is being created.
+
+.sb_imax_pct
+Maximum percentage of filesystem space that can be used for inodes. The default
+value is 5%.
+
+.sb_icount
+Global count for number inodes allocated on the filesystem. This is only
+maintained in the first superblock.
+
+.sb_ifree
+Global count of free inodes on the filesystem. This is only maintained in the
+first superblock.
+
+.sb_fdblocks
+Global count of free data blocks on the filesystem. This is only maintained in
+the first superblock.
+
+.sb_frextents
+Global count of free real-time extents on the filesystem. This is only
+maintained in the first superblock.
+
+.sb_uquotino
+Inode for user quotas. This and the following two quota fields only apply if
++XFS_SB_VERSION_QUOTABIT+ flag is set in +sb_versionnum+. Refer to
+xref:Quota_Inodes[quota inodes] for more information
+
+.sb_gquotino
+Inode for group or project quotas. Group and Project quotas cannot be used at
+the same time.
+
+.sb_qflags
+Quota flags. It can be a combination of the following flags:
+
+.Superblock quota flags
+[options="header"]
+|=====
+| Flag				| Description
+| +XFS_UQUOTA_ACCT+		| User quota accounting is enabled.
+| +XFS_UQUOTA_ENFD+		| User quotas are enforced.
+| +XFS_UQUOTA_CHKD+		| User quotas have been checked.
+| +XFS_PQUOTA_ACCT+		| Project quota accounting is enabled.
+| +XFS_OQUOTA_ENFD+		| Other (group/project) quotas are enforced.
+| +XFS_OQUOTA_CHKD+		| Other (group/project) quotas have been checked.
+| +XFS_GQUOTA_ACCT+		| Group quota accounting is enabled.
+|=====
+
+.sb_flags
+Miscellaneous flags.
+
+.sb_shared_vn
+Reserved and must be zero ("vn" stands for version number).
+
+.sb_inoalignmt
+Inode chunk alignment in fsblocks.
+
+.sb_unit
+Underlying stripe or raid unit in blocks.
+
+.sb_width
+Underlying stripe or raid width in blocks.
+
+.sb_dirblklog
+log~2~ multiplier that determines the granularity of directory block allocations
+in fsblocks.
+
+.sb_logsectlog
+log~2~ value of the log subvolume's sector size. This is only used if the
+journaling log is on a separate disk device (i.e. not internal).
+
+.sb_logsectsize
+The log's sector size in bytes if the filesystem uses an external log device.
+
+.sb_logsunit
+The log device's stripe or raid unit size. This only applies to version 2 logs
++XFS_SB_VERSION_LOGV2BIT+ is set in +sb_versionnum+.
+
+.sb_features2
+Additional version flags if +XFS_SB_VERSION_MOREBITSBIT+ is set in
++sb_versionnum+. The currently defined additional features include:
+
+.Extended Version 4 Superblock flags
+[options="header"]
+|=====
+| Flag				| Description
+| +XFS_SB_VERSION2_LAZYSBCOUNTBIT+ |
+Lazy global counters. Making a filesystem with this bit set can improve
+performance. The global free space and inode counts are only updated in the
+primary superblock when the filesystem is cleanly unmounted.
+
+| +XFS_SB_VERSION2_ATTR2BIT+	|
+Extended attributes version 2. Making a filesystem with this optimises the inode
+layout of extended attributes.
+
+| +XFS_SB_VERSION2_PARENTBIT+	|
+Parent pointers. All inodes must have an extended attribute that points back to
+its parent inode. The primary purpose for this information is in backup systems.
+|=====
+
+
+=== xfs_db superblock example
+
+A filesystem is made on a single SATA disk with the following command:
+
+----
+# mkfs.xfs -i attr=2 -n size=16384 -f /dev/sda7
+meta-data=/dev/sda7              isize=256    agcount=16, agsize=3923122 blks
+         =                       sectsz=512   attr=2
+data     =                       bsize=4096   blocks=62769952, imaxpct=25
+         =                       sunit=0      swidth=0 blks, unwritten=1
+naming   =version 2              bsize=16384
+log      =internal log           bsize=4096   blocks=30649, version=1
+         =                       sectsz=512   sunit=0 blks
+realtime =none                   extsz=65536  blocks=0, rtextents=0
+----
+
+And in xfs_db, inspecting the superblock:
+
+----
+xfs_db> sb
+xfs_db> p
+magicnum = 0x58465342
+blocksize = 4096
+dblocks = 62769952
+rblocks = 0
+rextents = 0
+uuid = 32b24036-6931-45b4-b68c-cd5e7d9a1ca5
+logstart = 33554436
+rootino = 128
+rbmino = 129
+rsumino = 130
+rextsize = 16
+agblocks = 3923122
+agcount = 16
+rbmblocks = 0
+logblocks = 30649
+versionnum = 0xb084
+sectsize = 512
+inodesize = 256
+inopblock = 16
+fname = "\000\000\000\000\000\000\000\000\000\000\000\000"
+blocklog = 12
+sectlog = 9
+inodelog = 8
+inopblog = 4
+agblklog = 22
+rextslog = 0
+inprogress = 0
+imax_pct = 25
+icount = 64
+ifree = 61
+fdblocks = 62739235
+frextents = 0
+uquotino = 0
+gquotino = 0
+qflags = 0
+flags = 0
+shared_vn = 0
+inoalignmt = 2
+unit = 0
+width = 0
+dirblklog = 2
+logsectlog = 0
+logsectsize = 0
+logsunit = 0
+features2 = 8
+----
+
+
+[[AG_Free_Space_Management]]
+== AG Free Space Management
+
+The XFS filesystem tracks free space in an allocation group using two B+trees.
+One B+tree tracks space by block number, the second by the size of the free
+space block. This scheme allows XFS to quickly find free space near a given
+block or of a given size.
+
+All block numbers, indexes and counts are AG relative.
+
+[[AG_Free_Space_Block]]
+=== AG Free Space Block
+
+The second sector in an AG contains the information about the two free space
+B+trees and associated free space information for the AG. The "AG Free Space
+Block", also knows as the +AGF+, uses the following structure:
+
+[source, c]
+----
+struct xfs_agf {
+     __be32              agf_magicnum;
+     __be32              agf_versionnum;
+     __be32              agf_seqno;
+     __be32              agf_length;
+     __be32              agf_roots[XFS_BTNUM_AGF];
+     __be32              agf_spare0;
+     __be32              agf_levels[XFS_BTNUM_AGF];
+     __be32              agf_spare1;
+     __be32              agf_flfirst;
+     __be32              agf_fllast;
+     __be32              agf_flcount;
+     __be32              agf_freeblks;
+     __be32              agf_longest;
+     __be32              agf_btreeblks;
+};
+----
+
+The rest of the bytes in the sector are zeroed. +XFS_BTNUM_AGF+ is set to 2,
+index 0 for the count B+tree and index 1 for the size B+tree.
+
+.agf_magicnum
+Specifies the magic number for the AGF sector: "XAGF" (0x58414746).
+
+.agf_versionnum
+Set to +XFS_AGF_VERSION+ which is currently 1.
+
+.agf_seqno
+Specifies the AG number for the sector.
+
+.agf_length
+Specifies the size of the AG in filesystem blocks. For all AGs except the last,
+This must be equal to the superblock's +sb_agblocks+ value. For the last AG,
+this could be less than the +sb_agblocks+ value. It is this value that should
+be used to determine the size of the AG.
+
+.agf_roots
+Specifies the block number for the root of the two free space B+trees.
+
+.agf_levels
+Specifies the level or depth of the two free space B+trees. For a fresh AG, this
+will be one, and the "roots" will point to a single leaf of level 0.
+
+.agf_flfirst
+Specifies the index of the first "free list" block. Free lists are covered in
+more detail later on.
+
+.agf_fllast
+Specifies the index of the last "free list" block.
+
+.agf_flcount
+Specifies the number of blocks in the "free list".
+
+.agf_freeblks
+Specifies the current number of free blocks in the AG.
+
+.agf_longest
+Specifies the number of blocks of longest contiguous free space in the AG.
+
+.agf_btreeblks
+Specifies the number of blocks used for the free space B+trees. This is only
+used if the +XFS_SB_VERSION2_LAZYSBCOUNTBIT+ bit is set in +sb_features2+.
+
+[[AG_Free_Space_Btrees]]
+=== AG Free Space B+trees
+
+The two Free Space B+trees store a sorted array of block offset and block
+counts in the leaves of the B+tree. The first B+tree is sorted by the offset,
+the second by the count or size.
+
+The trees use the following header:
+
+[source, c]
+----
+struct xfs_btree_sblock {
+     __be32                    bb_magic;
+     __be16                    bb_level;
+     __be16                    bb_numrecs;
+     __be32                    bb_leftsib;
+     __be32                    bb_rightsib;
+};
+----
+
+Leaf nodes contain a sorted array of offset/count pairs which are also used for
+node keys:
+
+[source, c]
+----
+struct xfs_alloc_rec {
+     __be32                    ar_startblock;
+     __be32                    ar_blockcount;
+};
+----
+
+Node pointers are an AG relative block pointer:
+
+[source, c]
+----
+typedef __be32 xfs_alloc_ptr_t;
+----
+
+* As the free space tracking is AG relative, all the block numbers are only
+32-bits.
+* The +bb_magic+ value depends on the B+tree: "ABTB" (0x41425442) for the block
+offset B+tree, "ABTC" (0x41425443) for the block count B+tree.
+* The +xfs_btree_sblock_t+ header is used for intermediate B+tree node as well
+as the leaves.
+* For a typical 4KB filesystem block size, the offset for the +xfs_alloc_ptr_t+
+array would be +0xab0+ (2736 decimal).
+* There are a series of macros in +xfs_btree.h+ for deriving the offsets,
+counts, maximums, etc for the B+trees used in XFS.
+
+The following diagram shows a single level B+tree which consists of one leaf:
+
+.Freespace B+tree with one leaf.
+image::images/15a.png[]
+
+With the intermediate nodes, the associated leaf pointers are stored in a
+separate array about two thirds into the block. The following diagram
+illustrates a 2-level B+tree for a free space B+tree:
+
+.Multi-level freespace B+tree.
+image::images/15b.png[]
+
+[[AG_Free_List]]
+=== AG Free List
+
+The AG Free List is located in the 4^th^ sector of each AG and is known as the
+AGFL. It is an array of AG relative block pointers for reserved space for
+growing the free space B+trees. This space cannot be used for general user data
+including inodes, data, directories and extended attributes.
+
+With a freshly made filesystem, 4 blocks are reserved immediately after the free
+space B+tree root blocks (blocks 4 to 7). As they are used up as the free space
+fragments, additional blocks will be reserved from the AG and added to the free
+list array.
+
+As the free list array is located within a single sector, a typical device will
+have space for 128 elements in the array (512 bytes per sector, 4 bytes per AG
+relative block pointer). The actual size can be determined by using the
++XFS_AGFL_SIZE+ macro.
+
+Active elements in the array are specified by the
+xref:AG_Free_Space_Block[AGF's] +agf_flfirst+, +agf_fllast+ and +agf_flcount+
+values. The array is managed as a circular list.
+
+.AG Free List layout
+image::images/16.png[]
+
+The presence of these reserved block guarantees that the free space B+trees can
+be updated if any blocks are freed by extent changes in a full AG.
+
+==== xfs_db AGF Examples
+
+These examples are derived from an AG that has been deliberately fragmented.
+The AGF:
+
+----
+xfs_db> agf 0
+xfs_db> p
+magicnum = 0x58414746
+versionnum = 1
+seqno = 0
+length = 3923122
+bnoroot = 7
+cntroot = 83343
+bnolevel = 2
+cntlevel = 2
+flfirst = 22
+fllast = 27
+flcount = 6
+freeblks = 3654234
+longest = 3384327
+btreeblks = 0
+----
+
+In the AGFL, the active elements are from 22 to 27 inclusive which are obtained
+from the +flfirst+ and +fllast+ values from the +agf+ in the previous example:
+
+----
+xfs_db> agfl 0
+xfs_db> p
+bno[0-127] = 0:4 1:5 2:6 3:7 4:83342 5:83343 6:83344 7:83345 8:83346 9:83347
+             10:4 11:5 12:80205 13:80780 14:81496 15:81766 16:83346 17:4 18:5
+             19:80205 20:82449 21:81496 22:81766 23:82455 24:80780 25:5
+             26:80205 27:83344
+----
+
+The free space B+tree sorted by block offset, the root block is from the AGF's
++bnoroot+ value:
+
+----
+xfs_db> fsblock 7
+xfs_db> type bnobt
+xfs_db> p
+magic = 0x41425442
+level = 1
+numrecs = 4
+leftsib = null
+rightsib = null
+keys[1-4] = [startblock,blockcount]
+           1:[12,16] 2:[184586,3] 3:[225579,1] 4:[511629,1]
+ptrs[1-4] = 1:2 2:83347 3:6 4:4
+----
+
+Blocks 2, 83347, 6 and 4 contain the leaves for the free space B+tree by
+starting block. Block 2 would contain offsets 16 up to but not including 184586
+while block 4 would have all offsets from 511629 to the end of the AG.
+
+The free space B+tree sorted by block count, the root block is from the AGF's
++cntroot+ value:
+
+----
+xfs_db> fsblock 83343
+xfs_db> type cntbt
+xfs_db> p
+magic = 0x41425443
+level = 1
+numrecs = 4
+leftsib = null
+rightsib = null
+keys[1-4] = [blockcount,startblock]
+           1:[1,81496] 2:[1,511729] 3:[3,191875] 4:[6,184595]
+ptrs[1-4] = 1:3 2:83345 3:83342 4:83346
+----
+
+The leaf in block 3, in this example, would only contain single block counts.
+The offsets are sorted in ascending order if the block count is the same.
+
+Inspecting the leaf in block 83346, we can see the largest block at the end:
+
+----
+xfs_db> fsblock 83346
+xfs_db> type cntbt
+xfs_db> p
+magic = 0x41425443
+level = 0
+numrecs = 344
+leftsib = 83342
+rightsib = null
+recs[1-344] = [startblock,blockcount]
+           1:[184595,6] 2:[187573,6] 3:[187776,6]
+           ...
+           342:[513712,755] 343:[230317,258229] 344:[538795,3384327]
+----
+
+The longest block count must be the same as the AGF's +longest+ value.
+
+[[AG_Inode_Management]]
+== AG Inode Management
+
+[[Inode_Numbers]]
+=== Inode Numbers
+
+Inode numbers in XFS come in two forms: AG relative and absolute.
+
+AG relative inode numbers always fit within 32 bits. The number of bits actually
+used is determined by the sum of the xref:Superblocks[superblock's] +sb_inoplog+
+and +sb_agblklog+ values. Relative inode numbers are found within the AG's inode
+structures.
+
+Absolute inode numbers include the AG number in the high bits, above the bits
+used for the AG relative inode number. Absolute inode numbers are found in
+xref:Directories[directory] entries.
+
+.Inode number formats
+image::images/18.png[]
+
+[[Inode_Information]]
+=== Inode Information
+
+Each AG manages its own inodes. The third sector in the AG contains information
+about the AG's inodes and is known as the AGI.
+
+The AGI uses the following structure:
+
+[source, c]
+----
+struct xfs_agi {
+     __be32              agi_magicnum;
+     __be32              agi_versionnum;
+     __be32              agi_seqno
+     __be32              agi_length;
+     __be32              agi_count;
+     __be32              agi_root;
+     __be32              agi_level;
+     __be32              agi_freecount;
+     __be32              agi_newino;
+     __be32              agi_dirino;
+     __be32              agi_unlinked[64];
+}
+----
+.agi_magicnum
+Specifies the magic number for the AGI sector: "XAGI" (0x58414749).
+
+.agi_versionnum
+Set to +XFS_AGI_VERSION+ which is currently 1.
+
+.agi_seqno
+Specifies the AG number for the sector.
+
+.agi_length
+Specifies the size of the AG in filesystem blocks.
+
+.agi_count
+Specifies the number of inodes allocated for the AG.
+
+.agi_root
+Specifies the block number in the AG containing the root of the inode B+tree.
+
+.agi_level
+Specifies the number of levels in the inode B+tree.
+
+.agi_freecount
+Specifies the number of free inodes in the AG.
+
+.agi_newino
+Specifies AG relative inode number most recently allocated.
+
+.agi_dirino
+Deprecated and not used, it's always set to NULL (-1).
+
+.agi_unlinked[64]
+Hash table of unlinked (deleted) inodes that are still being referenced. Refer
+to xref:Unlinked_Pointer[unlinked list pointers] for more information.
+
+
+[[Inode_Btrees]]
+== Inode B+trees
+
+Inodes are allocated in chunks of 64, and a B+tree is used to track these chunks
+of inodes as they are allocated and freed. The block containing root of the
+B+tree is defined by the AGI's +agi_root+ value.
+
+The B+tree header for the nodes and leaves use the +xfs_btree_sblock+ structure
+which is the same as the header used in the xref:AG_Free_Space_Btrees[AGF
+B+trees].
+
+Leaves contain an array of the following structure:
+
+[source,c]
+----
+struct xfs_inobt_rec {
+     __be32                    ir_startino;
+     __be32                    ir_freecount;
+     __be64                    ir_free;
+};
+----
+
+Nodes contain key/pointer pairs using the following types:
+
+[source,c]
+----
+struct xfs_inobt_key {
+     __be32                     ir_startino;
+};
+typedef __be32 xfs_inobt_ptr_t;
+----
+
+For the leaf entries, +ir_startino+ specifies the starting inode number for the
+chunk, +ir_freecount+ specifies the number of free entries in the chuck, and the
++ir_free+ is a 64 element bit array specifying which entries are free in the
+chunk.
+
+The following diagram illustrates a single level inode B+tree:
+
+.Single Level inode b+tree
+image::images/20a.png[]
+
+
+And a 2-level inode B+tree:
+
+.Multi-Level inode b+tree
+image::images/20b.png[]
+
+
+==== xfs_db AGI examples
+TODO
+
+[[Real-time_Devices]]
+== Real-time Devices
+
+TODO
+

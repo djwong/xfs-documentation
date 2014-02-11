@@ -1,0 +1,182 @@
+[[Internal_Inodes]]
+= Internal Inodes
+
+XFS allocates several inodes when a filesystem is created. These are internal
+and not accessible from the standard directory structure. These inodes are only
+accessible from the superblock.
+
+[[Quota_Inodes]]
+== Quota Inodes
+
+If quotas are used, two inodes are allocated for user and group quota
+management. If project quotas are used, these replace the group quota management
+and therefore uses the group quota inode.
+
+* Project quota's primary purpose is to track and monitor disk usage for
+directories. For this to occur, the directory inode must have the
++XFS_DIFLAG_PROJINHERIT+ flag set so all inodes created underneath the directory
+inherit the project ID.
+
+* Inodes and blocks owned by ID zero do not have enforced quotas, but only quota
+accounting.
+
+* Extended attributes do not contribute towards the ID's quota.
+
+* To access each ID's quota information in the file, seek to the ID offset
+multiplied by the size of +xfs_dqblk_t+ (136 bytes).
+
+.Quota inode layout
+image::images/76.png[]
+
+Quota information stored in the two inodes (in data extents) are an array of the
++xfs_dqblk+ structure where there is one instance for each ID in the system:
+
+[source, c]
+----
+struct xfs_disk_dquot {
+     __be16                d_magic;
+     __u8                  d_version;
+     __u8                  d_flags;
+     __be32                d_id;
+     __be64                d_blk_hardlimit;
+     __be64                d_blk_softlimit;
+     __be64                d_ino_hardlimit;
+     __be64                d_ino_softlimit;
+     __be64                d_bcount;
+     __be64                d_icount;
+     __be32                d_itimer;
+     __be32                d_btimer;
+     __be16                d_iwarns;
+     __be16                d_bwarns;
+     __be32                d_pad0;
+     __be64                d_rtb_hardlimit;
+     __be64                d_rtb_softlimit;
+     __be64                d_rtbcount;
+     __be32                d_rtbtimer;
+     __be16                d_rtbwarns;
+     __be16                d_pad;
+};
+struct xfs_dqblk {
+     struct xfs_disk_dquot dd_diskdq;
+     char                  dd_fill[32];
+};
+----
+
+.d_magic
+Specifies the signature where these two bytes are 0x4451 (+XFS_DQUOT_MAGIC+),
+or "DQ" in ASCII.
+
+.d_version
+Specifies the structure version, currently this is one (+XFS_DQUOT_VERSION+).
+
+.d_flags
+Specifies which type of ID the structure applies to:
+
+[source, c]
+----
+#define XFS_DQ_USER  0x0001
+#define XFS_DQ_PROJ  0x0002
+#define XFS_DQ_GROUP 0x0004
+----
+
+.d_id</term>
+The ID for the quota structure. This will be a uid, gid or projid based on the
+value of +d_flags+.
+
+.d_blk_hardlimit
+Specifies the hard limit for the number of filesystem blocks the ID can own. The
+ID will not be able to use more space than this limit. If it is attempted,
++ENOSPC+ will be returned.
+
+.d_blk_softlimit
+Specifies the soft limit for the number of filesystem blocks the ID can own.
+The ID can temporarily use more space than by +d_blk_softlimit+ up to
++d_blk_hardlimit+. If the space is not freed by the time limit specified by ID
+zero's +d_btimer+ value, the ID will be denied more space until the total
+blocks owned goes below +d_blk_softlimit+.
+
+.d_ino_hardlimit
+Specifies the hard limit for the number of inodes the ID can own. The ID will
+not be able to create or own any more inodes if +d_icount+ reaches this value.
+
+.d_ino_softlimit
+Specifies the soft limit for the number of inodes the ID can own. The ID can
+temporarily create or own more inodes than specified by d_ino_softlimit up to
+d_ino_hardlimit. If the inode count is not reduced by the time limit specified
+by ID zero's d_itimer value, the ID will be denied from creating or owning more
+inodes until the count goes below d_ino_softlimit.
+
+.d_bcount
+Specifies how many filesystem blocks are actually owned by the ID.
+
+.d_icount
+Specifies how many inodes are actually owned by the ID.
+
+.d_itimer
+Specifies the time when the ID's +d_icount+ exceeded +d_ino_softlimit+. The soft
+limit will turn into a hard limit after the elapsed time exceeds ID zero's
++d_itimer+ value. When d_icount goes back below +d_ino_softlimit+, +d_itimer+
+is reset back to zero.
+
+.d_btimer
+Specifies the time when the ID's +d_bcount+ exceeded +d_blk_softlimit+. The soft
+limit will turn into a hard limit after the elapsed time exceeds ID zero's
++d_btimer+ value. When d_bcount goes back below +d_blk_softlimit+, +d_btimer+
+is reset back to zero.
+
+.d_iwarns
+.d_bwarns
+.d_rtbwarns
+Specifies how many times a warning has been issued. Currently not used.
+
+.d_rtb_hardlimit
+Specifies the hard limit for the number of real-time blocks the ID can own. The
+ID cannot own more space on the real-time subvolume beyond this limit.
+
+.d_rtb_softlimit
+Specifies the soft limit for the number of real-time blocks the ID can own. The
+ID can temporarily own more space than specified by +d_rtb_softlimit+ up to
++d_rtb_hardlimit+. If +d_rtbcount+ is not reduced by the time limit specified
+by ID zero's +d_rtbtimer value+, the ID will be denied from owning more space
+until the count goes below +d_rtb_softlimit+.
+
+.d_rtbcount
+Specifies how many real-time blocks are currently owned by the ID.
+
+.d_rtbtimer
+Specifies the time when the ID's +d_rtbcount+ exceeded +d_rtb_softlimit+. The
+soft limit will turn into a hard limit after the elapsed time exceeds ID zero's
++d_rtbtimer+ value. When +d_rtbcount+ goes back below +d_rtb_softlimit+,
++d_rtbtimer+ is reset back to zero.
+
+
+[[Real-time_Inodes]]
+== Real-time Inodes
+
+There are two inodes allocated to managing the real-time device's space, the
+Bitmap Inode and the Summary Inode.
+
+[[Real-Time_Bitmap_Inode]]
+=== Real-Time Bitmap Inode
+
+The Bitmap Inode tracks the used/free space in the real-time device using an
+old-style bitmap. One bit is allocated per real-time extent. The size of an
+extent is specified by the superblock's +sb_rextsize+ value.
+
+The number of blocks used by the bitmap inode is equal to the number of
+real-time extents (+sb_rextents+) divided by the block size (+sb_blocksize+) and
+bits per byte. This value is stored in +sb_rbmblocks+. The nblocks and extent
+array for the inode should match this.
+
+[source, c]
+	xfs_ino_t		sb_rbmino;
+
+[[Real-Time_Summary_Inode]]
+=== Real-Time Summary Inode
+
+The Summary Inode keeps the used/free space accounting information for the
+real-time device.
+
+[source, c]
+	xfs_ino_t		sb_rsumino;
+

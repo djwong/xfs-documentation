@@ -1,0 +1,72 @@
+<subtitle>Documentation of the XFS filesystem on-disk structures</subtitle>
+<abstract>
+	<para>This book documents the XFS Filesystem Structure</para>
+</abstract>
+<corpauthor>
+</corpauthor>
+<copyright>
+	<year>2006</year>
+	<holder>Silicon Graphics Inc.</holder>
+</copyright>
+<legalnotice>
+	<para>© Copyright 2006 Silicon Graphics Inc. All rights reserved.  Permission is granted to copy, distribute, and/or modify this document under the terms of the Creative Commons Attribution-Share Alike, Version 3.0 or any later version published by the Creative Commons Corp. A copy of the license is available at <ulink url="http://creativecommons.org/licenses/by-sa/3.0/us/"/>.</para>
+</legalnotice>
+
+<revhistory>
+	<revision>
+		<revnumber>0.1</revnumber>
+		<date>2006</date>
+		<author>
+			<firstname>Silicon Graphics, Inc</firstname>
+			<surname></surname>
+			<email></email>
+		</author>
+		<revdescription>
+			<simplelist>
+				<member>Initial Release</member>
+			</simplelist>
+		</revdescription>
+	</revision>
+	<revision>
+		<revnumber>1.0</revnumber>
+		<date>Fri Jul 03 2009</date>
+		<author>
+			<firstname>Ryan</firstname>
+			<surname>Lerch</surname>
+			<email></email>
+		</author>
+		<revdescription>
+			<simplelist>
+				<member>Publican Conversion</member>
+			</simplelist>
+		</revdescription>
+	</revision>
+	<revision>
+		<revnumber>1.1</revnumber>
+		<date>March 2010</date>
+		<author>
+			<firstname>Eric</firstname>
+			<surname>Sandeen</surname>
+			<email></email>
+		</author>
+		<revdescription>
+			<simplelist>
+				<member>Community Release</member>
+			</simplelist>
+		</revdescription>
+	</revision>
+	<revision>
+		<revnumber>1.99</revnumber>
+		<date>February 2014</date>
+		<author>
+			<firstname>Dave</firstname>
+			<surname>Chinner</surname>
+			<email></email>
+		</author>
+		<revdescription>
+			<simplelist>
+				<member>AsciiDoc Conversion</member>
+			</simplelist>
+		</revdescription>
+	</revision>
+</revhistory>
