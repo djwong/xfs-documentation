@@ -1,6 +1,6 @@
 = XFS Delayed Logging Design
-:Author:	Dave Chinner
-:Email:		dchinner@redhat.com
+Dave Chinner, <dchinner@redhat.com>
+v1.0, Feb 2014: Initial conversion to asciidoc
 
 == Introduction to Re-logging in XFS
 
