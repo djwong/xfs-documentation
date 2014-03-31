@@ -13,17 +13,18 @@ endif
 
 MAKEOPTS = --no-print-directory Q=$(Q)
 
-SUBDIRS = design
+SUBDIRS = design admin
 
 # Never blow away subdirs
 .PRECIOUS: $(SUBDIRS)
 .PHONY: $(SUBDIRS)
 
+defaults: $(SUBDIRS)
+
 $(SUBDIRS):
 	@echo "Building $@"
 	$(Q)$(MAKE) $(MAKEOPTS) -q -C $@ || $(MAKE) $(MAKEOPTS) -C $@
 
-all: $(SUBDIRS)
 
 clean: $(addsuffix -clean,$(SUBDIRS))
 

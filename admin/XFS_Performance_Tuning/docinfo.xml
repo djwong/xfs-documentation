@@ -1,0 +1,35 @@
+<subtitle>Performance Optimisation of the XFS Filesystem</subtitle>
+<abstract>
+	<para>This book documents the knowledge and processes required to
+	optimise the XFS filesystem.</para>
+</abstract>
+<corpauthor>
+</corpauthor>
+<copyright>
+	<year>2014</year>
+	<holder>Red Hat, Inc.</holder>
+</copyright>
+<legalnotice>
+	<para>© Copyright 2014 Red Hat, Inc. All rights reserved.</para>
+	<para>Permission is granted to copy, distribute, and/or modify this
+	document under the terms of the Creative Commons Attribution-Share
+	Alike, Version 3.0 Unported License. A copy of the license is available
+	at <ulink url="http://creativecommons.org/licenses/by-sa/3.0/us/"/>.</para>
+</legalnotice>
+
+<revhistory>
+	<revision>
+		<revnumber>0.1</revnumber>
+		<date>2014</date>
+		<author>
+			<firstname>Dave</firstname>
+			<surname>Chinner</surname>
+			<email>dchinner@redhat.com</email>
+		</author>
+		<revdescription>
+			<simplelist>
+				<member>Initial Version</member>
+			</simplelist>
+		</revdescription>
+	</revision>
+</revhistory>

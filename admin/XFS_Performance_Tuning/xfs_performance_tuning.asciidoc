@@ -1,0 +1,111 @@
+// This is based on a multi-book template where each chapter uses level 1
+// headings. See doc/multi-book.txt as the example from asciidoc documentation.
+//
+// We pull in the document info in xml format from docinfo.xml. We do this
+// because asciidoc is unable to handle multiple entry revision histories,
+// and we really need an area to set up various docbook sections like copyright
+// and legal notice sections.
+//
+XFS Performance Tuning
+======================
+:doctype: book
+:docinfo1:
+
+[preface]
+--
+_Premature optimization is the root of all evil._ - Donald Knuth
+
+So you want to tune your XFS filesystem for a workload? Think hard about it as
+it's difficult to do properly and requires significant knowledge and expertise.
+Reading this guide won't make you an optimisation expert, though it might just
+help you solve the problem you are facing.
+--
+
+Introduction
+============
+
+== Overview
+
+This document describes the theory and practice being tuning XFS
+for performance. Performance tuning is a mixture of knowledge, process and
+observation. The xref:Knowledge[Knowledge Section] will cover aspects of the XFS
+configuration space that affect performance and assumes that the reader has some
+familiarity with the XFS on-disk structures.
+
+// add document link to XFS Filesystem Structure
+
+The xref:Observation[Observation Section] will demonstrate various tools that
+can be used to monitor filesystem performance while workloads are run. Key
+performance metrics will be discussed and related back to the structure of the
+filesystem and configuration parameters discussed in the
+xref:Knowledge[Knowledge Section].
+
+The xref:Process[Process section] will cover the typical processes used to
+optimise a filesystem for a given workload. If the workload measurements are not
+accurate or reproducable, then no conclusions can be drawn as to whether a
+configuration changes an improvemnt or not. Hence without a robust testing
+process, no amount of knowledge or observation will result in a well optimised
+filesystem configuration.
+
+While reading this document, it is important to keep in mind the fact that
+there are relatively few workloads where using non-default mkfs.xfs or mount
+options make much sense. In general, the default values already used are
+optimised for best performance in the first place. The most common
+optimisations are done automatically if possible and hence mostly remove the
+need for manual optimisation.
+
+Therefore, you should only consider changing the defaults if either:
+
+* you know from experience that your workload causes XFS a specific problem that
+can be worked around via a configuration change, or
+
+* your workload is demonstrating bad performance when using the default
+configurations.
+
+In this case, you need to understand why your application is causing bad
+performance before you start tweaking XFS configurations. This guide is intended
+to help you identify the cause of perofrmance problems and which knobs you can
+tweak to avoid or mitigate the problems being observed.
+
+
+[[Knowledge]]
+Knowledge
+=========
+
+:leveloffset: 1
+
+// 1. storage layout
+
+// 2. filesystem layout
+include::filesystem_layout.asciidoc[]
+
+// 3. tunable filesystem features
+include::filesystem_tunables.asciidoc[]
+
+// 4. Understand the workload
+
+:leveloffset: 0
+
+[[Observation]]
+Observation
+===========
+
+:leveloffset: 1
+
+= TODO
+
+TODO
+
+:leveloffset: 0
+
+[[Process]]
+Tuning Processes
+================
+
+:leveloffset: 1
+
+= TODO
+
+TODO
+
+:leveloffset: 0
