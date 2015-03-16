@@ -1,4 +1,4 @@
-= SMR Layout Optimisation for XFS (v0.1, March 2015)
+= SMR Layout Optimisation for XFS (v0.2, March 2015)
 Dave Chinner, <dchinner@redhat.com>
 
 == Overview
@@ -8,7 +8,7 @@ on disk structures to be able to use host-managed SMR drives.
 
 This assumes a userspace ZBC implementation such as libzbc will do all the heavy
 lifting work of laying out the structure of the filesystem, and that it will
-perform things like zone write pointer checking/resetting before the filesystme
+perform things like zone write pointer checking/resetting before the filesystem
 is mounted.
 
 == Concepts
@@ -19,22 +19,36 @@ zone. Zones are typically in the order of 256MB, though may actually be of
 variable size as physical geometry of the drives differ from inner to outer
 edges.
 
-SMR drives also typically have an outer section that is not SMR technology - it
+SMR drives also typically have an outer section that is CMR technology - it
 allows random writes and overwrites to any area within those zones. Drive
 managed SMR devices use this region for internal metadata
 journalling  for block remapping tables and as a staging area for data writes
 before being written out in sequential fashion ito zones after block remapping
-has been performed. Recent research has shown that 6TB seagate drives have a
-20-25GB staging zone, which is more than enough for our purposes.
+has been performed.
+
+Recent research has shown that 6TB seagate drives have a 20-25GB CMR zone,
+which is more than enough for our purposes. Information from other vendors
+indicate that some drives will have much more CMR, hence if we design for the
+known sizes in the Seagate drives we will be fine for other drives just coming
+onto the market right now.
 
 For host managed/aware drives, we are going to assume that we can use this area
 directly for filesystem metadata - for our own mapping tables and things like
-the journal, inodes, directories and free space tracking.
+the journal, inodes, directories and free space tracking. We are also going to
+assume that we can find these regions easily in the ZBC information, and that
+they are going to be contiguous rather than spread all over the drive.
 
 XFS already has a data-only device call the "real time" device, whose free space
 information is tracked externally in bitmaps attached to inodes that exist in
 the "data" device. All filesystem metadata exists in the "data" device, except
 maybe the journal which can also be in an external device.
+
+A key constraint we need to work within here is that RAID on SMR drives is a
+long way off. The main use case is for bulk storage of data in the back end of
+distributed object stores (i.e. cat pictures on the intertubes) and hence a
+filesystem per drive is the typical configuration we'll be chasing here.
+Similarly, partitioning of SMR drives makes no sense for host aware drives,
+so we are going to constrain the architecture to a single drive for now.
 
 == Journal modifications
 
@@ -61,6 +75,10 @@ recovery will need to limit the recovery head to the current write pointer of
 the lead zone.  Modifications here are limited to the function that finds the
 head of the log, and can actually be used to speed up the search algorithm.
 
+However, given the size of the CMR zones, we can host the journal in an
+unmodified manner inside the CMR zone and not have to worry about zone
+awareness. This is by far the simplest solution to the problem.
+
 == Data zones
 
 What we need is a mechanism for tracking the location of zones (i.e. start LBA),
@@ -75,7 +93,21 @@ We're going to need userspace to be able to see the contents of these inodes;
 read only access wil be needed to analyse the contents of the zone, so we're
 going to need a special directory to expose this information. It would be useful
 to have a ".zones" directory hanging off the root directory that contains all
-the zone allocation inodes so userspace can simply open them....
+the zone allocation inodes so userspace can simply open them.
+
+THis biggest issue that has come to light here is the number of zones in a
+device. Zones are typically 256MB in size, and so we are looking at 4,000
+zones/TB. For a 10TB drive, that's 40,000 zones we have to keep track of. And if
+the devices keep getting larger at the expected rate, we're going to have to
+deal with zone counts in the hundreds of thousands. Hence a single flat
+directory containing all these inodes is not going to scale, nor will we be able
+to keep them all in memory at once.
+
+As a result, we are going to need to group the zones for locality and efficiency
+purposes, likely as "zone groups" of, say, up to 1TB in size. Luckily, by
+keeping the zone information in inodes the information can be demand paged and
+so we don't need to pin thousands of inodes and bitmaps in memory. Zone groups
+also have other benefits...
 
 While it seems like tracking free space is trivial for the purposes of
 allocation (and it is!), the complexity comes when we start to delete or
@@ -109,6 +141,27 @@ almost stale zones entirely stale, and hence then be able to be reset.
 Hence we don't actually need any major new data moving functionality in the
 kernel to enable this, except maybe an event channel for the kernel to tell
 xfs_fsr it needs to do some cleaning work.
+
+If we arrange zones into zoen groups, we also have a method for keeping new
+allocations out of regions we are re-organising. That is, we need to be able to
+mark zone groups as "read only" so the kernel will not attempt to allocate from
+them while the cleaner is running and re-organising the data within the zones in
+a zone group. This ZG also allows the cleaner to maintain some level of locality
+to the data that it is re-arranging.
+
+=== Reverse mapping btrees
+
+One of the complexities is that the current reverse map btree is a per
+allocation group construct. This means that, as per the current design and
+implementation, it will not work with the inode based bitmap allocator. This,
+however, is not actually a major problem thanks to the generic btree library
+that XFS uses.
+
+That is, the generic btree library in XFS is used to implement the block mapping
+btree held in the data fork of the inode. Hence we can use the same btree
+implementation as the per-AG rmap btree, but simply add a couple of functions,
+set a couple of flags and host it in the inode data fork of a third per-zone
+inode to track the zone's owner information.
 
 == Mkfs
 
@@ -150,12 +203,12 @@ bitmap space and two inodes, so call it 10kB per 256MB zone. That's 40MB per TB
 for free space bitmaps. We'll want to suport at least 1 million inodes per TB,
 so that's another 512MB per TB, plus another 256MB per TB for directory
 structures. There's other bits and pieces of metadata as well (attribute space,
-internal freespace btrees, etc.
+internal freespace btrees, reverse map btrees, etc.
 
-So, at minimum we will probably need at least 1GB of random write space per TB
+So, at minimum we will probably need at least 2GB of random write space per TB
 of SMR zone data space. Plus a couple of GB for the journal if we want the easy
 option. For those drive vendors out there that are listening and want good
-performance, put that in flash, not on the outer edge of the spinning disk....
+performance, replace the CMR region with a SSD....
 
 == Kernel implementation
 
@@ -208,8 +261,10 @@ write completion, no other allocations to that zone can take place. If that's
 the case, this is going to cause massive fragmentation and/or severe IO latency
 problems for any application that has this sort of IO engine.
 
-has anyone thought about how host managed/aware storage stacks are supposed to
-deal with this problem?
+There is a block layer solution to this in the works - the block layer will
+track the write pointer in each zone and if it gets writes out of order it will
+requeue the IO at the tail of the queue, hence allowing the IO that has been
+delayed to be issued before the out of order write.
 
 === Crash recovery
 
@@ -267,13 +322,13 @@ With zone based write pointers, we lose all capability of write alignment to the
 underlying storage - our only choice to write is the current set of write
 pointers we have access to. There are several methods we could use to work
 around this problem (e.g. put a slab-like allocator on top of the zones) but
-that requires completely redesiging the allocators for SMR. Again, this may be a
+that requires completely redesigning the allocators for SMR. Again, this may be a
 step too far....
 
-=== RAID on SMR?
+=== RAID on SMR....
 
-How the hell does RAID work with SMR, and exactly what does that look like to
-the filesytem?
+How does RAID work with SMR, and exactly what does that look like to
+the filesystem?
 
 How does libzbc work with RAID given it is implemented through the scsi ioctl
 interface?
