@@ -18,7 +18,7 @@ PDF_TARGETS=$(addsuffix .pdf, $(basename $(DOCFILES)))
 
 %.pdf: %.asciidoc
 	@echo "[pdf] $*"
-	$(Q)a2x -f pdf $<
+	$(Q)a2x -f pdf --dblatex-opts "-P latex.output.revhistory=0" $<
 
 default: html pdf $(SUBDIRS)
 
