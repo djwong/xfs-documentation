@@ -44,6 +44,7 @@ relevant chapters.  Magic numbers tend to have consistent locations:
 | +XFS_ATTR_LEAF_MAGIC+		| 0xfbee	|     	| xref:Leaf_Attributes[Leaf Attribute]
 | +XFS_ATTR3_LEAF_MAGIC+	| 0x3bee	|     	| xref:Leaf_Attributes[Leaf Attribute], v5 only
 | +XFS_ATTR3_RMT_MAGIC+		| 0x5841524d	| XARM	| xref:Remote_Values[Remote Attribute Value], v5 only
+| +XFS_RMAP_CRC_MAGIC+		| 0x524d4233	| RMB3	| xref:Reverse_Mapping_Btree[Reverse Mapping B+tree], v5 only
 |=====
 
 The magic numbers for log items are at offset zero in each log item, but items
