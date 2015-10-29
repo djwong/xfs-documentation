@@ -48,6 +48,8 @@ include::overview.asciidoc[]
 
 include::metadata_integrity.asciidoc[]
 
+include::reconstruction.asciidoc[]
+
 include::common_types.asciidoc[]
 
 include::magic.asciidoc[]
@@ -61,6 +63,8 @@ Global Structures
 :leveloffset: 1
 
 include::allocation_groups.asciidoc[]
+
+include::rmapbt.asciidoc[]
 
 include::journaling_log.asciidoc[]
 

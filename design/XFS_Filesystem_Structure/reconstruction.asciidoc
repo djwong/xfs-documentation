@@ -1,0 +1,53 @@
+[[Reconstruction]]
+= Metadata Reconstruction
+
+[NOTE]
+This is a theoretical discussion of how reconstruction could work; none of this
+is implemented as of 2015.
+
+A simple UNIX filesystem can be thought of in terms of a directed acyclic graph.
+To a first approximation, there exists a root directory node, which points to
+other nodes.  Those other nodes can themselves be directories or they can be
+files.  Each file, in turn, points to data blocks.
+
+XFS adds a few more details to this picture:
+
+* The real root(s) of an XFS filesystem are the allocation group headers
+(superblock, AGF, AGI, AGFL).
+* Each allocation group’s headers point to various per-AG B+trees (free space,
+inode, free inodes, free list, etc.)
+* The free space B+trees point to unused extents;
+* The inode B+trees point to blocks containing inode chunks;
+* All superblocks point to the root directory and the log;
+* Hardlinks mean that multiple directories can point to a single file node;
+* File data block pointers are indexed by file offset;
+* Files and directories can have a second collection of pointers to data blocks
+which contain extended attributes;
+* Large directories require multiple data blocks to store all the subpointers;
+* Still larger directories use high-offset data blocks to store a B+tree of
+hashes to directory entries;
+* Large extended attribute forks similarly use high-offset data blocks to store
+a B+tree of hashes to attribute keys; and
+* Symbolic links can point to data blocks.
+
+The beauty of this massive graph structure is that under normal circumstances,
+everything known to the filesystem is discoverable (access controls
+notwithstanding) from the root.  The major weakness of this structure of course
+is that breaking a edge in the graph can render entire subtrees inaccessible.
++xfs_repair+ “recovers” from broken directories by scanning for unlinked inodes
+and connecting them to +/lost+found+, but this isn’t sufficiently general to
+recover from breaks in other parts of the graph structure.  Wouldn’t it be
+useful to have back pointers as a secondary data structure?  The current repair
+strategy is to reconstruct whatever can be rebuilt, but to scrap anything that
+doesn't check out.
+
+The xref:Reverse_Mapping_Btree[reverse-mapping B+tree] fills in part of the
+puzzle.  Since it contains copies of every entry in each inode’s data and
+attribute forks, we can fix a corrupted block map with these records.
+Furthermore, if the inode B+trees become corrupt, it is possible to visit all
+inode chunks using the reverse-mapping data.  Should XFS ever gain the ability
+to store parent directory information in each inode, it also becomes possible
+to resurrect damaged directory trees, which should reduce the complaints about
+inodes ending up in +/lost+found+.  Everything else in the per-AG primary
+metadata can already be reconstructed via +xfs_repair+.  Hopefully,
+reconstruction will not turn out to be a fool's errand.
