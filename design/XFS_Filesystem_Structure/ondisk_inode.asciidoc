@@ -313,8 +313,14 @@ Counts the number of changes made to the attributes in this inode.
 Log sequence number of the last inode write.
 
 *di_flags2*::
-Specifies extended flags associated with a v3 inode.  There are no flags defined
-currently.
+Specifies extended flags associated with a v3 inode.
+
+.Version 3 Inode flags
+[options="header"]
+|=====
+| Flag				| Description
+| +XFS_DIFLAG2_REFLINK+		| This inode shares (or has shared) data blocks with another inode.
+|=====
 
 *di_pad2*::
 Padding for future expansion of the inode.

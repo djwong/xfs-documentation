@@ -1419,6 +1419,7 @@ The hash value of a particular record.
 The directory/attribute logical block containing all entries up to the
 corresponding hash value.
 
+//
 * The freeindex's +bests+ array starts from the end of the block and grows to the
 start of the block.
 

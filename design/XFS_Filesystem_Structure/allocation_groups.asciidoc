@@ -13,6 +13,7 @@ Each AG has the following characteristics:
          * Free space management
          * Inode allocation and tracking
          * Reverse block-mapping index (optional)
+         * Data block reference count index (optional)
 
 Having multiple AGs allows XFS to handle most operations in parallel without
 degrading performance as the number of concurrent accesses increases.
@@ -386,6 +387,12 @@ Reverse mapping B+tree.  Each allocation group contains a B+tree containing
 records mapping AG blocks to their owners.  See the section about
 xref:Reconstruction[reconstruction] for more details.
 
+| +XFS_SB_FEAT_RO_COMPAT_REFLINK+ |
+Reference count B+tree.  Each allocation group contains a B+tree to track the
+reference counts of AG blocks.  This enables files to share data blocks safely.
+See the section about xref:Reflink_Deduplication[reflink and deduplication] for
+more details.
+
 |=====
 
 *sb_features_incompat*::
@@ -546,7 +553,9 @@ struct xfs_agf {
 
      /* version 5 filesystem fields start here */
      uuid_t              agf_uuid;
-     __be64              agf_spare64[16];
+     __be32              agf_refcount_root;
+     __be32              agf_refcount_level;
+     __be64              agf_spare64[15];
 
      /* unlogged fields, written during buffer writeback. */
      __be64              agf_lsn;
@@ -607,6 +616,12 @@ used if the +XFS_SB_VERSION2_LAZYSBCOUNTBIT+ bit is set in +sb_features2+.
 *agf_uuid*::
 The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
 depending on which features are set.
+
+*agf_refcount_root*::
+Block number for the root of the reference count B+tree, if enabled.
+
+*agf_refcount_root*::
+Depth of the reference count B+tree, if enabled.
 
 *agf_spare64*::
 Empty space in the logged part of the AGF sector, for use for future features.
@@ -1300,4 +1315,5 @@ By placing the real time device (and the journal) on separate high-performance
 storage devices, it is possible to reduce most of the unpredictability in I/O
 response times that come from metadata operations.
 
-None of the XFS per-AG B+trees are involved with real time files.
+None of the XFS per-AG B+trees are involved with real time files.  It is not
+possible for real time files to share data blocks.
