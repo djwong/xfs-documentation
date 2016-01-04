@@ -308,7 +308,7 @@ its parent inode. The primary purpose for this information is in backup systems.
 |=====
 
 
-=== xfs_db superblock example
+=== xfs_db Superblock Example
 
 A filesystem is made on a single SATA disk with the following command:
 
@@ -548,7 +548,7 @@ image::images/16.png[]
 The presence of these reserved block guarantees that the free space B+trees can
 be updated if any blocks are freed by extent changes in a full AG.
 
-==== xfs_db AGF Examples
+==== xfs_db AGF Example
 
 These examples are derived from an AG that has been deliberately fragmented.
 The AGF:
@@ -772,7 +772,7 @@ And a 2-level inode B+tree:
 image::images/20b.png[]
 
 
-==== xfs_db AGI examples
+==== xfs_db AGI Example
 TODO
 
 [[Real-time_Devices]]

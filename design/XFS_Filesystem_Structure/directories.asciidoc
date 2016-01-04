@@ -47,7 +47,7 @@ typedef __uint32_t xfs_dir2_dataptr_t;
 
 
 [[Shortform_Directories]]
-== Shortform Directories
+== Short Form Directories
 
 * Directory entries are stored within the inode.
 
@@ -86,7 +86,7 @@ typedef struct xfs_dir2_sf_entry {
 } xfs_dir2_sf_entry_t;
 ----
 
-.Shortform Directory layout
+.Short form directory layout
 image::images/39.png[]
 
 * Inode numbers are stored using 4 or 8 bytes depending on whether all the inode
@@ -107,7 +107,7 @@ typedef union {
 } xfs_dir2_inou_t;
 ----
 
-=== Shortform Directory xfs_db Example
+=== xfs_db Short Form Directory Example
 
 A directory is created with 4 files, all inode numbers fitting within 4 bytes:
 
@@ -325,7 +325,7 @@ lookup speed for large directories. If they were not stored, the hashes have to
 be calculated for all entries each time a lookup occurs in a directory.
 
 
-=== Block Directory xfs_db Example
+=== xfs_db Block Directory Example
 
 A directory is created with 8 entries, directory block size = filesystem block size:
 
@@ -585,7 +585,7 @@ block's +bestfree[0].length+ value.
 .Leaf directory free entry detail
 image::images/48.png[]
 
-=== Leaf Directory xfs_db Example
+=== xfs_db Leaf Directory Example
 
 For this example, a directory was created with 256 entries (frame000000.tst to
 frame000255.tst) and then deleted some files (frame00005*, frame00018* and
@@ -905,10 +905,10 @@ less than or equal to +hdr.nused. hdr.nused+ should be the same as the index of
 the last data directory block plus one (i.e. when the last data block is freed,
 +nused+ and +nvalid+ are decremented).
 
-.Node Directory Layout
+.Node directory layout
 image::images/54.png[]
 
-=== Node Directory xfs_db Example
+=== xfs_db Node Directory Example
 
 With the node directory examples, we are using a filesystems with 4KB block
 size, and a 16KB directory size. The directory has over 2000 entries:
@@ -1111,7 +1111,7 @@ that B+trees can handle:
 required hundreds of thousand files with quite long file names (or millions with
 shorter names) to get a second freeindex block.
 
-=== B+tree Directory xfs_db Example
+=== xfs_db B+tree Directory Example
 
 A directory has been created with 200,000 entries with each entry being 100
 characters long. The filesystem block size and directory block size are 4KB:

@@ -41,7 +41,7 @@ The following four sections describe each of the on-disk formats.
 
 
 [[Shortform_Attributes]]
-== Shortform Attributes
+== Short Form Attributes
 
 When the all extended attributes can fit within the inode's attribute fork, the
 inode's +di_aformat+ is set to "local" and the attributes are stored in the
@@ -67,7 +67,7 @@ typedef struct xfs_attr_sf_hdr xfs_attr_sf_hdr_t;
 typedef struct xfs_attr_sf_entry xfs_attr_sf_entry_t;
 ----
 
-.Shortform attribute layout
+.Short form attribute layout
 image::images/64.png[]
 
 
@@ -89,7 +89,7 @@ immediately follows the name in the array.
 | +XFS_ATTR_SECURE+		| The attribute's namespace is "secure".
 |=====
 
-=== Shortform attribute xfs_db example
+=== xfs_db Short Form Attribute Example
 
 A file is created and two attributes are set:
 
@@ -387,7 +387,7 @@ using the +xfs_attr_leaf_name_local_t+ structure. For large attribute values
 that cannot be stored within the leaf, separate filesystem blocks are allocated
 to store the value. They use the +xfs_attr_leaf_name_remote_t+ structure.
 
-.Leaf Attribute layout
+.Leaf attribute layout
 image::images/69.png[]
 
 Both local and remote entries can be interleaved as they are only addressed by
@@ -403,7 +403,7 @@ crash during the time that the bit is set. The bit is cleared when attribute
 has finished being setup. This is done because some large attributes cannot
 be created inside a single transaction.
 
-=== Leaf Attribute xfs_db Example
+=== xfs_db Leaf Attribute Example
 
 A single 30KB extended attribute is added to an inode:
 
@@ -538,10 +538,10 @@ to lookup, you read the node's btree array and first +hashval+ in the array that
 exceeds the given hash and it can then be found in the block pointed to by the
 +before+ value. 
 
-.Node Attribute layout
+.Node attribute layout
 image::images/72.png[]
 
-=== Node Attribute xfs_db Example
+=== xfs_db Node Attribute Example
 
 An inode with 1000 small attributes with the naming "attribute_n" where 'n' is a
 number:
@@ -685,7 +685,7 @@ Attributes.
 Refer to the previous section on B+tree Data Extents for more information on XFS
 B+tree extents.
 
-=== B+tree Attribute xfs_db Example
+=== xfs_db B+tree Attribute Example
 
 Added 2000 attributes with 729 byte values to a file:
 

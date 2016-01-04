@@ -88,7 +88,7 @@ The number of extents that can fit in the inode depends on the inode size and
 can up to 19 extents with this format. Beyond this, extents have to use the
 B+tree format.
 
-=== xfs_db: Inode data fork extents
+=== xfs_db Inode Data Fork Extents Example
 
 An 8MB file with one extent:
 
@@ -268,9 +268,9 @@ bits in size.
 .Single level extent B+tree
 image::images/35.png[]
 
-.Multi-level extent B+tree
+.Multiple level extent B+tree
 image::images/36.png[]
 
-=== BMBT xfs_db Example
+=== xfs_db bmbt Example
 
 TODO

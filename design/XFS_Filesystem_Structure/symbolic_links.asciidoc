@@ -7,16 +7,16 @@ Symbolic links to a file can be stored in one of two formats: "local" and
 
 
 [[Shortform_Symbolic_Links]]
-== Shortform Symbolic Links
+== Short Form Symbolic Links
 
 Symbolic links are stored with the "local" +di_format+ if the symbolic link can
 fit within the inode's data fork. The link data is an array of characters
 (+di_symlink+ array in the data fork union).
 
-.Symbolic link shortform layout
+.Symbolic link short form layout
 image::images/61.png[]
 
-=== Shortform symbolic link xfs_db example
+=== xfs_db Short Form Symbolic Link Example
 
 A short symbolic link to a file is created:
 
@@ -66,7 +66,7 @@ characters.
 .Symbolic link extent layout
 image::images/62.png[]
 
-=== Symbolic link extent xfs_db example
+=== xfs_db Symbolic Link Extent Example
 
 A longer link is created (greater than 156 bytes):
 
