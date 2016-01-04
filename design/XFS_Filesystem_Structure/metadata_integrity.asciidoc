@@ -1,0 +1,36 @@
+= Metadata Integrity
+
+Prior to version 5, most XFS metadata blocks contained a magic number that
+could provide a minimal sanity check that a block read off the disk contained
+the same type of data that the code thought it was reading off the disk.
+However, this was insufficient -- given a correct type code, it was still
+impossible to tell if the block was from a previous filesystem, or happened to
+be owned by something else, or had been written to the wrong location on disk.
+Furthermore, not all metadata blocks had magic numbers -- remote extended
+attributes and extent symbolic links had no protection at all.
+
+Therefore, the version 5 disk format introduced larger headers for all metadata
+types, which enable the filesystem to check information being read from the
+disk more rigorously.  Metadata integrity fields now include:
+
+* *Magic* numbers, to classify all types of metadata.  This is unchanged from v4.
+* A copy of the filesystem *UUID*, to confirm that a given disk block is connected to the superblock.
+* The *owner*, to avoid accessing a piece of metadata which belongs to some other part of the filesystem.
+* The filesystem *block number*, to detect misplaced writes.
+* The *log serial number* of the last write to this block, to avoid replaying obsolete log entries.
+* A CRC32c *checksum* of the entire block, to detect minor corruption.
+
+Metadata integrity coverage has been extended to all metadata blocks in the
+filesystem, with the following notes:
+
+* Inodes can have multiple ``owners'' in the directory tree; therefore the record contains the inode number instead of an owner or a block number.
+* Superblocks have no owners.
+* The disk quota file has no owner or block numbers.
+* Metadata owned by files list the inode number as the owner.
+* Per-AG data and B+tree blocks list the AG number as the owner.
+* Per-AG header sectors don't list owners or block numbers, since they have fixed locations.
+* Remote attribute blocks are not logged and therefore the LSN must be -1.
+
+This functionality enables XFS to decide that a block contents are so
+unexpected that it should stop immediately.  Unfortunately checksums do not
+allow for automatic correction.  Please keep regular backups, as always.
