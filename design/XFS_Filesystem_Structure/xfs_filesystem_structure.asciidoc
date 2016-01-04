@@ -77,9 +77,9 @@ include::ondisk_inode.asciidoc[]
 
 include::data_extents.asciidoc[]
 
-include::extended_attributes.asciidoc[]
-
 include::directories.asciidoc[]
+
+include::extended_attributes.asciidoc[]
 
 include::symbolic_links.asciidoc[]
 
