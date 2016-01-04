@@ -1,8 +1,8 @@
 [[On-disk_Inode]]
 = On-disk Inode
 
-All files, directories and links are stored on disk with inodes and descend from
-the root inode with it's number defined in the xref:Superblocks[superblock]. The
+All files, directories, and links are stored on disk with inodes and descend from
+the root inode with its number defined in the xref:Superblocks[superblock]. The
 previous section on xref:AG_Inode_Management[AG Inode Management] describes the
 allocation and management of inodes on disk. This section describes the contents
 of inodes themselves.
@@ -12,10 +12,10 @@ An inode is divided into 3 parts:
 .On-disk inode sections
 image::images/23.png[]
 
-* The core contains what the inode represents, stat data and information
+* The core contains what the inode represents, stat data, and information
 describing the data and attribute forks.
 
-* The +di_u+ "data fork" contains normal data related to the inode. It's contents
+* The +di_u+ "data fork" contains normal data related to the inode. Its contents
 depends on the file type specified by +di_core.di_mode+ (eg. regular file,
 directory, link, etc) and how much information is contained in the file which
 determined by +di_core.di_format+. The following union to represent this data is
@@ -34,7 +34,7 @@ union {
 } di_u;
 ----
 
-* The di_a "attribute fork" contains extended attributes. Its layout is
+* The +di_a+ "attribute fork" contains extended attributes. Its layout is
 determined by the +di_core.di_aformat+ value. Its representation is declared as
 follows:
 
@@ -82,7 +82,8 @@ struct xfs_dinode_core {
      __uint32_t                di_gid;
      __uint32_t                di_nlink;
      __uint16_t                di_projid;
-     __uint8_t                 di_pad[8];
+     __uint16_t                di_projid_hi;
+     __uint8_t                 di_pad[6];
      __uint16_t                di_flushiter;
      xfs_timestamp_t           di_atime;
      xfs_timestamp_t           di_mtime;
@@ -102,7 +103,7 @@ struct xfs_dinode_core {
 ----
 
 *di_magic*::
-The inode signature where these two bytes are 0x494e, or "IN" in ASCII.
+The inode signature; these two bytes are 0x494e, or "IN" in ASCII.
 
 *di_mode*::
 Specifies the mode access bits and type of file using the standard S_Ixxx values
@@ -115,12 +116,11 @@ values in the inode core. Initially, inodes are created as v1 but can be
 converted on the fly to v2 when required.
 
 *di_format*::
-
 Specifies the format of the data fork in conjunction with the +di_mode+ type.
 This can be one of several values. For directories and links, it can be "local"
-where all metadata associated with the file is within the inode, "extents" where
+where all metadata associated with the file is within the inode; "extents" where
 the inode contains an array of extents to other filesystem blocks which contain
-the associated metadata or data or "btree" where the inode contains a B+tree
+the associated metadata or data; or "btree" where the inode contains a B+tree
 root node which points to filesystem blocks containing the metadata or data.
 Migration between the formats depends on the amount of metadata associated with
 the inode. "dev" is used for character and block devices while "uuid" is
@@ -150,15 +150,18 @@ Specifies the owner's GID of the inode.
 
 *di_nlink*::
 Specifies the number of links to the inode from directories. This is maintained
-for both inode versions for current versions of XFS. Old versions of XFS did not
-support v2 inodes, and therefore this value was never updated and was classed as
-reserved space (part of +di_pad+).
+for both inode versions for current versions of XFS.  Prior to v2 inodes, this
+field was part of +di_pad+.
 
 *di_projid*::
 Specifies the owner's project ID in v2 inodes. An inode is converted to v2 if
 the project ID is set. This value must be zero for v1 inodes.
 
-*di_pad[8]*::
+*di_projid_hi*::
+Specifies the high 16 bits of the owner's project ID in v2 inodes, if the
++XFS_SB_VERSION2_PROJID32BIT+ feature is set; and zero otherwise.
+
+*di_pad[6]*::
 Reserved, must be zero.
 
 *di_flushiter*::
@@ -167,8 +170,8 @@ Incremented on flush.
 *di_atime*::
 
 Specifies the last access time of the files using UNIX time conventions the
-following structure. This value maybe undefined if the filesystem is mounted
-with the "noatime" option.
+following structure. This value may be undefined if the filesystem is mounted
+with the "noatime" option.  XFS supports timestamps with nanosecond resolution:
 
 [source, c]
 ----
@@ -240,7 +243,6 @@ following values:
 [options="header"]
 |=====
 | Flag				| Description
-| +XFS_SB_VERSION_ATTRBIT+	| Set if any inode have extended attributes.
 | +XFS_DIFLAG_REALTIME+		| The inode's data is located on the real-time device.
 | +XFS_DIFLAG_PREALLOC+		| The inode's extents have been preallocated.
 | +XFS_DIFLAG_NEWRTBM+		|
@@ -269,6 +271,12 @@ For directory inodes, new inodes inherit the +di_extsize+ value.
 | +XFS_DIFLAG_NODEFRAG+		|
 Specifies the inode is to be ignored when defragmenting the filesystem.
 
+| +XFS_DIFLAG_FILESTREAMS+	|
+Use the filestream allocator.  The filestreams allocator allows a directory to
+reserve an entire allocation group for exclusive use by files created in that
+directory.  Files in other directories cannot use AGs reserved by other
+directories.
+
 |=====
 
 *di_gen*::
@@ -280,16 +288,15 @@ can change by unlinking and creating a new file that reuses the inode.
 [[Unlinked_Pointer]]
 == Unlinked Pointer
 
-The +di_next_unlinked+ value in the inode is used to track inodes that have been
-unlinked (deleted) but which are still referenced. When an inode is unlinked and
-there is still an outstanding reference, the inode is added to one of the
-xref:AG_Inode_Management[AGI's] +agi_unlinked+ hash buckets. The AGI unlinked
-bucket points to an inode and the +di_next_unlinked+ value points to the next
-inode in the chain. The last inode in the chain has +di_next_unlinked+ set to
-NULL (-1).
+The +di_next_unlinked+ value in the inode is used to track inodes that have
+been unlinked (deleted) but are still open by a program.  When an inode is
+in this state, the inode is added to one of the xref:AG_Inode_Management[AGI's]
++agi_unlinked+ hash buckets. The AGI unlinked bucket points to an inode and the
++di_next_unlinked+ value points to the next inode in the chain. The last inode
+in the chain has +di_next_unlinked+ set to NULL (-1).
 
 Once the last reference is released, the inode is removed from the unlinked hash
-chain, and +di_next_unlinked+ is set to NULL. In the case of a system crash, XFS
+chain and +di_next_unlinked+ is set to NULL. In the case of a system crash, XFS
 recovery will complete the unlink process for any inodes found in these lists.
 
 The only time the unlinked fields can be seen to be used on disk is either on an
@@ -372,8 +379,8 @@ This is accessed by casting the return value from +XFS_DFORK_DPTR+ to +char*+.
 block, the inode contains the extents to these filesystem blocks
 (+xfs_bmbt_rec_t*+).
 
-Details for symbolic links is covered in the xref:Symbolic_Links[Symbolic Links]
-later on.
+Details for symbolic links is covered in the section about
+xref:Symbolic_Links[Symbolic Links].
 
 [[Other_File_Types]]
 === Other File Types
@@ -390,16 +397,16 @@ For character and block devices (+S_IFCHR+ and +S_IFBLK+), cast the value from
 The attribute fork in the inode always contains the location of the extended
 attributes associated with the inode.
 
-The location of the attribute fork in the inode's literal area (offset 100 to
-the end of the inode) is specified by the +di_forkoff+ value in the inode's
-core. If this value is zero, the inode does not contain any extended attributes.
-Non-zero, the byte offset into the literal area = +di_forkoff+ * 8, which also
-determines the 2048 byte maximum size for an inode. Attributes must be allocated
-on a 64-bit boundary on the disk. To access the extended attributes in code, use
-the +XFS_DFORK_PTR+ macro specifying +XFS_ATTR_FORK+ for the "which" parameter.
-Alternatively, the +XFS_DFORK_APTR+ macro can be used.
+The location of the attribute fork in the inode's literal area is specified by
+the +di_forkoff+ value in the inode's core. If this value is zero, the inode
+does not contain any extended attributes.  If non-zero, the attribute fork's
+byte offset into the literal area can be computed from +di_forkoff × 8+.
+Attributes must be allocated on a 64-bit boundary on the disk. To access the
+extended attributes in code, use the +XFS_DFORK_PTR+ macro specifying
++XFS_ATTR_FORK+ for the "which" parameter.  Alternatively, the +XFS_DFORK_APTR+
+macro can be used.
 
-Which structure in the attribute fork is used depends on the +di_aformat+ value
+The structure of the attribute fork depends on the +di_aformat+ value
 in the inode. It can be one of the following values:
 
 * +XFS_DINODE_FMT_LOCAL+: The extended attributes are contained entirely within
@@ -431,7 +438,7 @@ space is split between +di_u+ and +di_a+ forks which also determines how the
 With "attr1" attributes, the +di_forkoff+ is set to somewhere in the middle of
 the space between the core and end of the inode and never changes (which has the
 effect of artificially limiting the space for data information). As the data
-fork grows, when it gets to +di_forkoff+, it will move the data to the level
+fork grows, when it gets to +di_forkoff+, it will move the data to the next
 format level (ie. local < extent < btree). If very little space is used
 for either attributes or data, then a good portion of the available inode space
 is wasted with this version.
@@ -446,3 +453,5 @@ The following diagram compares the two versions:
 .Extended attribute layouts
 image::images/30.png[]
 
+Note that because +di_forkoff+ is an 8-bit value measuring units of 8 bytes,
+the maximum size of an inode is 2^8^ × 2^3^ = 2^11^ = 2048 bytes.

@@ -28,8 +28,9 @@ multiplied by the size of +xfs_dqblk_t+ (136 bytes).
 .Quota inode layout
 image::images/76.png[]
 
-Quota information stored in the two inodes (in data extents) are an array of the
-+xfs_dqblk+ structure where there is one instance for each ID in the system:
+Quota information is stored in the data extents of the two reserved quota
+inodes as an array of the +xfs_dqblk+ structures, where there is one array
+element for each ID in the system:
 
 [source, c]
 ----
@@ -67,7 +68,7 @@ Specifies the signature where these two bytes are 0x4451 (+XFS_DQUOT_MAGIC+),
 or "DQ" in ASCII.
 
 *d_version*::
-Specifies the structure version, currently this is one (+XFS_DQUOT_VERSION+).
+The structure version, currently this is 1 (+XFS_DQUOT_VERSION+).
 
 *d_flags*::
 Specifies which type of ID the structure applies to:
@@ -84,33 +85,33 @@ The ID for the quota structure. This will be a uid, gid or projid based on the
 value of +d_flags+.
 
 *d_blk_hardlimit*::
-Specifies the hard limit for the number of filesystem blocks the ID can own. The
+The hard limit for the number of filesystem blocks the ID can own. The
 ID will not be able to use more space than this limit. If it is attempted,
 +ENOSPC+ will be returned.
 
 *d_blk_softlimit*::
-Specifies the soft limit for the number of filesystem blocks the ID can own.
+The soft limit for the number of filesystem blocks the ID can own.
 The ID can temporarily use more space than by +d_blk_softlimit+ up to
 +d_blk_hardlimit+. If the space is not freed by the time limit specified by ID
 zero's +d_btimer+ value, the ID will be denied more space until the total
 blocks owned goes below +d_blk_softlimit+.
 
 *d_ino_hardlimit*::
-Specifies the hard limit for the number of inodes the ID can own. The ID will
+The hard limit for the number of inodes the ID can own. The ID will
 not be able to create or own any more inodes if +d_icount+ reaches this value.
 
 *d_ino_softlimit*::
-Specifies the soft limit for the number of inodes the ID can own. The ID can
-temporarily create or own more inodes than specified by d_ino_softlimit up to
-d_ino_hardlimit. If the inode count is not reduced by the time limit specified
-by ID zero's d_itimer value, the ID will be denied from creating or owning more
-inodes until the count goes below d_ino_softlimit.
+The soft limit for the number of inodes the ID can own. The ID can
+temporarily create or own more inodes than specified by +d_ino_softlimit+ up to
++d_ino_hardlimit+. If the inode count is not reduced by the time limit specified
+by ID zero's +d_itimer+ value, the ID will be denied from creating or owning more
+inodes until the count goes below +d_ino_softlimit+.
 
 *d_bcount*::
-Specifies how many filesystem blocks are actually owned by the ID.
+How many filesystem blocks are actually owned by the ID.
 
 *d_icount*::
-Specifies how many inodes are actually owned by the ID.
+How many inodes are actually owned by the ID.
 
 *d_itimer*::
 Specifies the time when the ID's +d_icount+ exceeded +d_ino_softlimit+. The soft
@@ -130,18 +131,18 @@ is reset back to zero.
 Specifies how many times a warning has been issued. Currently not used.
 
 *d_rtb_hardlimit*::
-Specifies the hard limit for the number of real-time blocks the ID can own. The
+The hard limit for the number of real-time blocks the ID can own. The
 ID cannot own more space on the real-time subvolume beyond this limit.
 
 *d_rtb_softlimit*::
-Specifies the soft limit for the number of real-time blocks the ID can own. The
+The soft limit for the number of real-time blocks the ID can own. The
 ID can temporarily own more space than specified by +d_rtb_softlimit+ up to
 +d_rtb_hardlimit+. If +d_rtbcount+ is not reduced by the time limit specified
 by ID zero's +d_rtbtimer value+, the ID will be denied from owning more space
 until the count goes below +d_rtb_softlimit+.
 
 *d_rtbcount*::
-Specifies how many real-time blocks are currently owned by the ID.
+How many real-time blocks are currently owned by the ID.
 
 *d_rtbtimer*::
 Specifies the time when the ID's +d_rtbcount+ exceeded +d_rtb_softlimit+. The

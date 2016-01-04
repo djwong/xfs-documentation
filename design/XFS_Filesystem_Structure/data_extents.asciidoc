@@ -1,18 +1,18 @@
 [[Data_Extents]]
 = Data Extents
 
-XFS allocates space for a file using extents: starting location and length. XFS
-extents also specify the file's logical starting offset for a file. This allows
-a files extent map to automatically support sparse files (i.e. "holes" in the
-file). A flag is also used to specify if the extent has been preallocated and
-not yet been written to (unwritten extent).
+XFS manages space using extents, which are defined as a starting location and
+length.  A fork in an XFS inode maps a logical offset to a space extent.  This
+enables a file's extent map to support sparse files (i.e. "holes" in the file).
+A flag is also used to specify if the extent has been preallocated but has not
+yet been written (unwritten extent).
 
 A file can have more than one extent if one chunk of contiguous disk space is
 not available for the file. As a file grows, the XFS space allocator will
-attempt to keep space contiguous and merge extents. If more than one file is
+attempt to keep space contiguous and to merge extents. If more than one file is
 being allocated space in the same AG at the same time, multiple extents for the
-files will occur as the extents get interleaved. The effect of this can vary
-depending on the extent allocator used in the XFS driver.
+files will occur as the extent allocations interleave. The effect of this can
+vary depending on the extent allocator used in the XFS driver.
 
 An extent is 128 bits in size and uses the following packed layout:
 
@@ -48,15 +48,16 @@ typedef enum {
 
 Some other points about extents:
 
-* The +xfs_bmbt_rec_32_t+ and +xfs_bmbt_rec_64_t+ structures are effectively
+* The +xfs_bmbt_rec_32_t+ and +xfs_bmbt_rec_64_t+ structures were effectively
 the same as +xfs_bmbt_rec_t+, just different representations of the same 128
-bits in on-disk big endian format.
+bits in on-disk big endian format.  +xfs_bmbt_rec_32_t+ was removed and
++xfs_bmbt_rec_64_t+ renamed to +xfs_bmbt_rec_t+ some time ago.
 
 * When a file is created and written to, XFS will endeavour to keep the extents
 within the same AG as the inode. It may use a different AG if the AG is busy
 or there is no space left in it.
 
-* If a file is zero bytes long, it will have no extents, +di_nblocks+ and
+* If a file is zero bytes long, it will have no extents and +di_nblocks+ and
 +di_nexents+ will be zero. Any file with data will have at least one extent, and
 each extent can use from 1 to over 2 million blocks (2^21^) on the filesystem.
 For a default 4KB block size filesystem, a single extent can be up to 8GB in
@@ -72,20 +73,20 @@ efficiently.
 [[Extent_List]]
 == Extent List
 
-Local extents are where the entire extent array is stored within the inode's
-data fork itself. This is the most optimal in terms of speed and resource
-consumption. The trade-off is the file can only have a few extents before the
-inode runs out of space.
+If the entire extent list is short enough to fit within the inode's fork
+region, we say that the fork is in ``extent list'' format.  This is the most
+optimal in terms of speed and resource consumption. The trade-off is the file
+can only have a few extents before the inode runs out of space.
 
-The "data fork" of the inode contains an array of extents, the size of the array
-determined by the inode's +di_nextents+ value.
+The data fork of the inode contains an array of extents; the size of the array
+is determined by the inode's +di_nextents+ value.
 
 .Inode data fork extent layout
 image::images/32.png[]
 
 The number of extents that can fit in the inode depends on the inode size and
 +di_forkoff+. For a default 256 byte inode with no extended attributes, a file
-can up to 19 extents with this format. Beyond this, extents have to use the
+can have up to 9 extents with this format. Beyond this, extents have to use the
 B+tree format.
 
 === xfs_db Inode Data Fork Extents Example
@@ -129,7 +130,7 @@ u.bmx[0-2] = [startoff,startblock,blockcount,extentflag]
 	2:[4050,35481,2025,0]
 ----
 
-Raw disk version of the inode with the third extent highlighted (+di_u+ always
+Raw disk version of the inode with the third extent highlighted (+di_u+
 starts at offset 0x64):
 
 [subs="quotes"]
@@ -193,9 +194,9 @@ u.bmx[0-1] = [startoff,startblock,blockcount,extentflag]
 [[Btree_Extent_List]]
 == B+tree Extent List
 
-Beyond the simple extent array, to efficiently manage large extent maps, XFS
-uses B+trees. The root node of the B+tree is stored in the inode's data fork.
-All block pointers for extent B+trees are 64-bit absolute block numbers.
+To manage extent maps that cannot fit in the inode fork area, XFS uses long
+format B+trees.  The root node of the B+tree is stored in the inode's data
+fork.  All block pointers for extent B+trees are 64-bit absolute block numbers.
 
 For a single level B+tree, the root node points to the B+tree's leaves. Each
 leaf occupies one filesystem block and contains a header and an array of extents
@@ -204,11 +205,12 @@ forward) block pointers to adjacent leaves. For a standard 4KB filesystem block,
 a leaf can contain up to 254 extents before a B+tree rebalance is triggered.
 
 For a multi-level B+tree, the root node points to other B+tree nodes which
-eventually point to the extent leaves. B+tree keys are based on the file's
-offset. The nodes at each level in the B+tree point to the adjacent nodes.
+eventually point to the extent leaves.  B+tree keys are based on the file's
+offset and have pointers to the next level down.  Nodes at each level in the
+B+tree also have pointers to the adjacent nodes.
 
 The base B+tree node is used for extents, directories and extended attributes.
-The structures used for inode's B+tree root are:
+The structures used for an inode's B+tree root are:
 
 [source, c]
 ----
@@ -222,14 +224,17 @@ struct xfs_bmbt_key {
 typedef xfs_fsblock_t xfs_bmbt_ptr_t, xfs_bmdr_ptr_t;
 ----
 
-* On disk, the B+tree node starts with the +xfs_bmbr_block_t+ header followed by
+* On disk, the B+tree node starts with the +xfs_bmdr_block_t+ header followed by
 an array of +xfs_bmbt_key_t+ values and then an array of +xfs_bmbt_ptr_t+
 values. The size of both arrays is specified by the header's +bb_numrecs+ value.
 
-* The root node in the inode can only contain up to 19 key/pointer pairs for a
+* The root node in the inode can only contain up to 9 key/pointer pairs for a
 standard 256 byte inode before a new level of nodes is added between the root
 and the leaves. This will be less if +di_forkoff+ is not zero (i.e. attributes
 are in use on the inode).
+
+[[Long_Format_Btrees]]
+== Long Format B+trees
 
 The subsequent nodes and leaves of the B+tree use the +xfs_btree_lblock+
 declaration:
@@ -253,10 +258,7 @@ a 4096 byte filesystem block).
 * For leaves, an array of +xfs_bmbt_rec+ extents follow the +xfs_btree_lblock+
 header.
 
-* Nodes and leaves use the same value for +bb_magic+: 
-
-[source, c]
-#define XFS_BMAP_MAGIC		0x424d4150	/* 'BMAP' */
+* Nodes and leaves use the same value for +bb_magic+.
 
 * The +bb_level+ value determines if the node is an intermediate node or a leaf.
 Leaves have a +bb_level+ of zero, nodes are one or greater.
