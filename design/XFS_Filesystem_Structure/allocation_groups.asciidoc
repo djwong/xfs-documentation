@@ -831,7 +831,79 @@ image::images/20b.png[]
 
 
 ==== xfs_db AGI Example
-TODO
+
+This is an AGI of a freshly populated filesystem:
+
+----
+xfs_db> agi 0
+xfs_db> p
+magicnum = 0x58414749
+versionnum = 1
+seqno = 0
+length = 825457
+count = 5440
+root = 3
+level = 1
+freecount = 9
+newino = 5792
+dirino = null
+unlinked[0-63] =
+uuid = 3dfa1e5c-5a5f-4ca2-829a-000e453600fe
+lsn = 0x1000032c2
+crc = 0x14cb7e5c (correct)
+free_root = 4
+free_level = 1
+----
+
+From this example, we see that the inode B+tree is rooted at AG block 3 and
+that the free inode B+tree is rooted at AG block 4.  Let's look at the
+inode B+tree:
+
+----
+xfs_db> addr root
+xfs_db> p
+magic = 0x49414233
+level = 0
+numrecs = 85
+leftsib = null
+rightsib = null
+bno = 24
+lsn = 0x1000032c2
+uuid = 3dfa1e5c-5a5f-4ca2-829a-000e453600fe
+owner = 0
+crc = 0x768f9592 (correct)
+recs[1-85] = [startino,freecount,free]
+        1:[96,0,0] 2:[160,0,0] 3:[224,0,0] 4:[288,0,0]
+        5:[352,0,0] 6:[416,0,0] 7:[480,0,0] 8:[544,0,0]
+        9:[608,0,0] 10:[672,0,0] 11:[736,0,0] 12:[800,0,0]
+        ...
+        85:[5792,9,0xff80000000000000]
+----
+
+Most of the inode chunks on this filesystem are totally full, since the +free+
+value is zero.  This means that we ought to expect inode 160 to be linked
+somewhere in the directory structure.  However, notice that 0xff80000000000000
+in record 85 -- this means that we would expect inode 5856 to be free.  Moving
+on to the free inode B+tree, we see that this is indeed the case:
+
+----
+xfs_db> addr free_root
+xfs_db> p
+magic = 0x46494233
+level = 0
+numrecs = 1
+leftsib = null
+rightsib = null
+bno = 32
+lsn = 0x1000032c2
+uuid = 3dfa1e5c-5a5f-4ca2-829a-000e453600fe
+owner = 0
+crc = 0x338af88a (correct)
+recs[1] = [startino,freecount,free] 1:[5792,9,0xff80000000000000]
+----
+
+Observe also that the AGI's +agi_newino+ points to this chunk, which has never
+been fully allocated.
 
 [[Real-time_Devices]]
 == Real-time Devices

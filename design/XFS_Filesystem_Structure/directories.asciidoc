@@ -269,8 +269,61 @@ b0: 72  61 6d 65 30 30 30 30 30 33 2e 74 73 74 01 80 rame000003.tst..
 c0: 00  84 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
 ----
 
-TODO: 8-byte inode number example
+This is an example of mixed 4-byte and 8-byte inodes in a directory:
 
+----
+xfs_db> inode 1024
+xfs_db> p
+core.magic = 0x494e
+core.mode = 040755
+core.version = 3
+core.format = 1 (local)
+core.nlinkv2 = 9
+...
+core.size = 125
+core.nblocks = 0
+core.extsize = 0
+core.nextents = 0
+...
+u3.sfdir3.hdr.count = 7
+u3.sfdir3.hdr.i8count = 4
+u3.sfdir3.hdr.parent.i8 = 1024
+u3.sfdir3.list[0].namelen = 3
+u3.sfdir3.list[0].offset = 0x60
+u3.sfdir3.list[0].name = "git"
+u3.sfdir3.list[0].inumber.i8 = 1027
+u3.sfdir3.list[0].filetype = 2
+u3.sfdir3.list[1].namelen = 4
+u3.sfdir3.list[1].offset = 0x70
+u3.sfdir3.list[1].name = "home"
+u3.sfdir3.list[1].inumber.i8 = 13422826546
+u3.sfdir3.list[1].filetype = 2
+u3.sfdir3.list[2].namelen = 10
+u3.sfdir3.list[2].offset = 0x80
+u3.sfdir3.list[2].name = "mike"
+u3.sfdir3.list[2].inumber.i8 = 4299308032
+u3.sfdir3.list[2].filetype = 2
+u3.sfdir3.list[3].namelen = 3
+u3.sfdir3.list[3].offset = 0x98
+u3.sfdir3.list[3].name = "mtr"
+u3.sfdir3.list[3].inumber.i8 = 13433252916
+u3.sfdir3.list[3].filetype = 2
+u3.sfdir3.list[4].namelen = 3
+u3.sfdir3.list[4].offset = 0xa8
+u3.sfdir3.list[4].name = "vms"
+u3.sfdir3.list[4].inumber.i8 = 16647516355
+u3.sfdir3.list[4].filetype = 2
+u3.sfdir3.list[5].namelen = 5
+u3.sfdir3.list[5].offset = 0xb8
+u3.sfdir3.list[5].name = "rsync"
+u3.sfdir3.list[5].inumber.i8 = 3494912
+u3.sfdir3.list[5].filetype = 2
+u3.sfdir3.list[6].namelen = 3
+u3.sfdir3.list[6].offset = 0xd0
+u3.sfdir3.list[6].name = "tmp"
+u3.sfdir3.list[6].inumber.i8 = 1593379
+u3.sfdir3.list[6].filetype = 2
+----
 
 [[Block_Directories]]
 == Block Directories

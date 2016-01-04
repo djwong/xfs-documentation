@@ -302,4 +302,43 @@ image::images/36.png[]
 
 === xfs_db bmbt Example
 
-TODO
+In this example, we dissect the data fork of a VM image that is sufficiently
+sparse and interleaved to have become a B+tree.
+
+----
+xfs_db> inode 132
+xfs_db> p
+core.magic = 0x494e
+core.mode = 0100600
+core.version = 3
+core.format = 3 (btree)
+...
+u3.bmbt.level = 1
+u3.bmbt.numrecs = 3
+u3.bmbt.keys[1-3] = [startoff] 1:[0] 2:[9072] 3:[13136]
+u3.bmbt.ptrs[1-3] = 1:8568 2:8569 3:8570
+----
+
+As you can see, the block map B+tree is rooted in the inode.  This tree has two
+levels, so let's go down a level to look at the records:
+
+----
+xfs_db> addr u3.bmbt.ptrs[1]
+xfs_db> p
+magic = 0x424d4133
+level = 0
+numrecs = 251
+leftsib = null
+rightsib = 8569
+bno = 68544
+lsn = 0x100000006
+uuid = 9579903c-333f-4673-a7d4-3254c05816ea
+owner = 132
+crc = 0xc61513dc (correct)
+recs[1-251] = [startoff,startblock,blockcount,extentflag]
+        1:[0,8520,48,0] 2:[48,4421,16,0] 3:[80,9136,16,0] 4:[96,8569,16,0]
+        5:[144,8601,32,0] 6:[192,8637,16,0] 7:[240,8680,16,0] 8:[288,9870,16,0]
+        9:[320,9920,16,0] 10:[336,9950,16,0] 11:[384,4004,32,0]
+        12:[432,6771,16,0] 13:[480,2702,16,0] 14:[528,8420,16,0]
+        ...
+----

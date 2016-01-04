@@ -83,6 +83,7 @@
 			<simplelist>
 				<member>Miscellaneous fixes.</member>
 				<member>Add missing field definitions.</member>
+				<member>Add some missing xfs_db examples.</member>
 			</simplelist>
 		</revdescription>
 	</revision>
