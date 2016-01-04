@@ -1,3 +1,837 @@
+[[Journaling_Log]]
 = Journaling Log
-   TODO:
 
+[NOTE]
+Only v2 log format is covered here.
+
+The XFS journal exists on disk as a reserved extent of blocks within the
+filesystem, or as a separate journal device.  The journal itself can be thought
+of as a series of log records; each log record contains a part of or a whole
+transaction.  A transaction consists of a series of log operation headers
+(``log items''), formatting structures, and raw data.  The first operation in a
+transaction establishes the transaction ID and the last operation is a commit
+record.  The operations recorded between the start and commit operations
+represent the metadata changes made by the transaction.  If the commit
+operation is missing, the transaction is incomplete and cannot be recovered.
+
+[[Log_Records]]
+== Log Records
+
+The XFS log is split into a series of log records.  Log records seem to
+correspond to an in-core log buffer, which can be up to 256KiB in size.  Each
+record has a log sequence number, which is the same LSN recorded in the v5
+metadata integrity fields.
+
+Log sequence numbers are a 64-bit quantity consisting of two 32-bit quantities.
+The upper 32 bits are the ``cycle number'', which increments every time XFS
+cycles through the log.  The lower 32 bits are the ``block number'', which is
+assigned when a transaction is committed, and should correspond to the block
+offset within the log.
+
+A log record begins with the following header, which occupies 512 bytes on
+disk:
+
+[source, c]
+----
+typedef struct xlog_rec_header {
+     __be32                    h_magicno;
+     __be32                    h_cycle;
+     __be32                    h_version;
+     __be32                    h_len;
+     __be64                    h_lsn;
+     __be64                    h_tail_lsn;
+     __le32                    h_crc;
+     __be32                    h_prev_block;
+     __be32                    h_num_logops;
+     __be32                    h_cycle_data[XLOG_HEADER_CYCLE_SIZE / BBSIZE];
+     /* new fields */
+     __be32                    h_fmt;
+     uuid_t                    h_fs_uuid;
+     __be32                    h_size;
+} xlog_rec_header_t;
+----
+
+*h_magicno*::
+The magic number of log records, 0xfeedbabe.
+
+*h_cycle*::
+Cycle number of this log record.
+
+*h_version*::
+Log record version, currently 2.
+
+*h_len*::
+Length of the log record, in bytes.  Must be aligned to a 64-bit boundary.
+
+*h_lsn*::
+Log sequence number of this record.
+
+*h_tail_lsn*::
+Log sequence number of the first log record with uncommitted buffers.
+
+*h_crc*::
+Checksum of the log record header, the cycle data, and the log records
+themselves.
+
+*h_prev_block*::
+Block number of the previous log record.
+
+*h_num_logops*::
+The number of log operations in this record.
+
+*h_cycle_data*::
+The first u32 of each log sector must contain the cycle number.  Since log
+item buffers are formatted without regard to this requirement, the original
+contents of the first four bytes of each sector in the log are copied into the
+corresponding element of this array.  After that, the first four bytes of those
+sectors are stamped with the cycle number.  This process is reversed at
+recovery time.  If there are more sectors in this log record than there are
+slots in this array, the cycle data continues for as many sectors are needed;
+each sector is formatted as type +xlog_rec_ext_header+.
+
+*h_fmt*::
+Format of the log record.  This is one of the following values:
+
+.Log record formats
+[options="header"]
+|=====
+| Format value        | Log format
+| +XLOG_FMT_UNKNOWN+  | Unknown.  Perhaps this log is corrupt.
+| +XLOG_FMT_LINUX_LE+ | Little-endian Linux.
+| +XLOG_FMT_LINUX_BE+ | Big-endian Linux.
+| +XLOG_FMT_IRIX_BE+  | Big-endian Irix.
+|=====
+
+*h_fs_uuid*::
+Filesystem UUID.
+
+*h_size*::
+In-core log record size.  This is somewhere between 16 and 256KiB, with 32KiB
+being the default.
+
+As mentioned earlier, if this log record is longer than 256 sectors, the cycle
+data overflows into the next sector(s) in the log.  Each of those sectors is
+formatted as follows:
+
+[source, c]
+----
+typedef struct xlog_rec_ext_header {
+    __be32                     xh_cycle;
+    __be32                     xh_cycle_data[XLOG_HEADER_CYCLE_SIZE / BBSIZE];
+} xlog_rec_ext_header_t;
+----
+
+*xh_cycle*::
+Cycle number of this log record.  Should match +h_cycle+.
+
+*xh_cycle_data*::
+Overflow cycle data.
+
+[[Log_Operations]]
+== Log Operations
+
+Within a log record, log operations are recorded as a series consisting of an
+operation header immediately followed by a data region.  The operation header
+has the following format:
+
+[source, c]
+----
+typedef struct xlog_op_header {
+     __be32                    oh_tid;
+     __be32                    oh_len;
+     __u8                      oh_clientid;
+     __u8                      oh_flags;
+     __u16                     oh_res2;
+} xlog_op_header_t;
+----
+
+*oh_tid*::
+Transaction ID of this operation.
+
+*oh_len*::
+Number of bytes in the data region.
+
+*oh_clientid*::
+The originator of this operation.  This can be one of the following:
+
+.Log Operation Client ID
+[options="header"]
+|=====
+| Client ID         | Originator
+| +XFS_TRANSACTION+ | Operation came from a transaction.
+| +XFS_VOLUME+      | ???
+| +XFS_LOG+         | ???
+|=====
+
+*oh_flags*::
+Specifies flags associated with this operation.  This can be a combination of
+the following values (though most likely only one will be set at a time):
+
+.Log Operation Flags
+[options="header"]
+|=====
+| Flag                  | Description
+| +XLOG_START_TRANS+    | Start a new transaction.  The next operation header should describe a transaction header.
+| +XLOG_COMMIT_TRANS+   | Commit this transaction.
+| +XLOG_CONTINUE_TRANS+ | Continue this trans into new log record.
+| +XLOG_WAS_CONT_TRANS+ | This transaction started in a previous log record.
+| +XLOG_END_TRANS+      | End of a continued transaction.
+| +XLOG_UNMOUNT_TRANS+  | Transaction to unmount a filesystem.
+|=====
+
+*oh_res2*::
+Padding.
+
+The data region follows immediately after the operation header and is exactly
++oh_len+ bytes long.  These payloads are in host-endian order, which means that
+one cannot replay the log from an unclean XFS filesystem on a system with a
+different byte order.
+
+[[Log_Items]]
+== Log Items
+
+Following are the types of log item payloads that can follow an
++xlog_op_header+.  Except for buffer data and inode cores, all log items have a
+magic number to distinguish themselves.  Buffer data items only appear after
++xfs_buf_log_format+ items; and inode core items only appear after
++xfs_inode_log_format+ items.
+
+.Log Operation Magic Numbers
+[options="header"]
+|=====
+| Magic				| Hexadecimal	| Operation Type
+| +XFS_TRANS_HEADER_MAGIC+	| 0x5452414e	| xref:Log_Transaction_Headers[Log Transaction Header]
+| +XFS_LI_EFI+			| 0x1236        | xref:EFI_Log_Item[Extent Freeing Intent]
+| +XFS_LI_EFD+			| 0x1237        | xref:EFD_Log_Item[Extent Freeing Done]
+| +XFS_LI_IUNLINK+		| 0x1238        |  Unknown?
+| +XFS_LI_INODE+		| 0x123b        | xref:Inode_Log_Item[Inode Updates]
+| +XFS_LI_BUF+			| 0x123c        | xref:Buffer_Log_Item[Buffer Writes]
+| +XFS_LI_DQUOT+		| 0x123d        | xref:Quota_Update_Log_Item[Update Quota]
+| +XFS_LI_QUOTAOFF+		| 0x123e        | xref:Quota_Off_Log_Item[Quota Off]
+| +XFS_LI_ICREATE+		| 0x123f        | xref:Inode_Create_Log_Item[Inode Creation]
+|=====
+
+[[Log_Transaction_Headers]]
+=== Transaction Headers
+
+A transaction header is an operation payload that starts a transaction.
+
+[source, c]
+----
+typedef struct xfs_trans_header {
+     uint                      th_magic;
+     uint                      th_type;
+     __int32_t                 th_tid;
+     uint                      th_num_items;
+} xfs_trans_header_t;
+----
+
+*th_magic*::
+The signature of a transaction header, ``TRAN'' (0x5452414e).  Note that this
+value is in host-endian order, not big-endian like the rest of XFS.
+
+*th_type*::
+Transaction type.  This is one of the following values:
+
+[options="header"]
+|=====
+| Type                         | Description
+| +XFS_TRANS_SETATTR_NOT_SIZE+ | Set an inode attribute that isn't the inode's size.
+| +XFS_TRANS_SETATTR_SIZE+     | Setting the size attribute of an inode.
+| +XFS_TRANS_INACTIVE+         | Freeing blocks from an unlinked inode.
+| +XFS_TRANS_CREATE+           | Create a file.
+| +XFS_TRANS_CREATE_TRUNC+     |  Unused?
+| +XFS_TRANS_TRUNCATE_FILE+    | Truncate a quota file.
+| +XFS_TRANS_REMOVE+           | Remove a file.
+| +XFS_TRANS_LINK+             | Link an inode into a directory.
+| +XFS_TRANS_RENAME+           | Rename a path.
+| +XFS_TRANS_MKDIR+            | Create a directory.
+| +XFS_TRANS_RMDIR+            | Remove a directory.
+| +XFS_TRANS_SYMLINK+          | Create a symbolic link.
+| +XFS_TRANS_SET_DMATTRS+      | Set the DMAPI attributes of an inode.
+| +XFS_TRANS_GROWFS+           | Expand the filesystem.
+| +XFS_TRANS_STRAT_WRITE+      | Convert an unwritten extent or delayed-allocate some blocks to handle a write.
+| +XFS_TRANS_DIOSTRAT+         | Allocate some blocks to handle a direct I/O write.
+| +XFS_TRANS_WRITEID+          | Update an inode's preallocation flag.
+| +XFS_TRANS_ADDAFORK+         | Add an attribute fork to an inode.
+| +XFS_TRANS_ATTRINVAL+        | Erase the attribute fork of an inode.
+| +XFS_TRANS_ATRUNCATE+        |  Unused?
+| +XFS_TRANS_ATTR_SET+         | Set an extended attribute.
+| +XFS_TRANS_ATTR_RM+          | Remove an extended attribute.
+| +XFS_TRANS_ATTR_FLAG+        |  Unused?
+| +XFS_TRANS_CLEAR_AGI_BUCKET+ | Clear a bad inode pointer in the AGI unlinked inode hash bucket.
+| +XFS_TRANS_SB_CHANGE+        | Write the superblock to disk.
+| +XFS_TRANS_QM_QUOTAOFF+      | Start disabling quotas.
+| +XFS_TRANS_QM_DQALLOC+       | Allocate a disk quota structure.
+| +XFS_TRANS_QM_SETQLIM+       | Adjust quota limits.
+| +XFS_TRANS_QM_DQCLUSTER+     |  Unused?
+| +XFS_TRANS_QM_QINOCREATE+    | Create a (quota) inode with reference taken.
+| +XFS_TRANS_QM_QUOTAOFF_END+  | Finish disabling quotas.
+| +XFS_TRANS_FSYNC_TS+         | Update only inode timestamps.
+| +XFS_TRANS_GROWFSRT_ALLOC+   | Grow the realtime bitmap and summary data for growfs.
+| +XFS_TRANS_GROWFSRT_ZERO+    | Zero space in the realtime bitmap and summary data.
+| +XFS_TRANS_GROWFSRT_FREE+    | Free space in the realtime bitmap and summary data.
+| +XFS_TRANS_SWAPEXT+          | Swap data fork of two inodes.
+| +XFS_TRANS_CHECKPOINT+       | Checkpoint the log.
+| +XFS_TRANS_ICREATE+          |  Unknown?
+| +XFS_TRANS_CREATE_TMPFILE+   | Create a temporary file.
+|=====
+
+*th_tid*::
+Transaction ID.
+
+*th_num_items*::
+The number of operations appearing after this operation, not including the
+commit operation.  In effect, this tracks the number of metadata change
+operations in this transaction.
+
+[[EFI_Log_Item]]
+=== Intent to Free an Extent
+
+The next two operation types work together to handle the freeing of filesystem
+blocks.  Naturally, the ranges of blocks to be freed can be expressed in terms
+of extents:
+
+[source, c]
+----
+typedef struct xfs_extent_32 {
+     __uint64_t                ext_start;
+     __uint32_t                ext_len;
+} __attribute__((packed)) xfs_extent_32_t;
+
+typedef struct xfs_extent_64 {
+     __uint64_t                ext_start;
+     __uint32_t                ext_len;
+     __uint32_t                ext_pad;
+} xfs_extent_64_t;
+----
+
+*ext_start*::
+Start block of this extent.
+
+*ext_len*::
+Length of this extent.
+
+The ``extent freeing intent'' operation comes first; it tells the log that XFS
+wants to free some extents.  This record is crucial for correct log recovery
+because it prevents the log from replaying blocks that are subsequently freed.
+If the log lacks a corresponding ``extent freeing done'' operation, the
+recovery process will free the extents.
+
+[source, c]
+----
+typedef struct xfs_efi_log_format {
+     __uint16_t                efi_type;
+     __uint16_t                efi_size;
+     __uint32_t                efi_nextents;
+     __uint64_t                efi_id;
+     xfs_extent_t              efi_extents[1];
+} xfs_efi_log_format_t;
+----
+
+*efi_type*::
+The signature of an EFI operation, 0x1236.  This value is in host-endian order,
+not big-endian like the rest of XFS.
+
+*efi_size*::
+Size of this log item.  Should be 1.
+
+*efi_nextents*::
+Number of extents to free.
+
+*efi_id*::
+A 64-bit number that binds the corresponding EFD log item to this EFI log item.
+
+*efi_extents*::
+Variable-length array of extents to be freed.  The array length is given by
++efi_nextents+.  The record type will be either +xfs_extent_64_t+ or
++xfs_extent_32_t+; this can be determined from the log item size (+oh_len+) and
+the number of extents (+efi_nextents+).
+
+[[EFD_Log_Item]]
+=== Completion of Intent to Free an Extent
+
+The ``extent freeing done'' operation complements the ``extent freeing intent''
+operation.  This second operation indicates that the block freeing actually
+happened, so that log recovery needn't try to free the blocks.  Typically, the
+operations to update the free space B+trees follow immediately after the EFD.
+
+[source, c]
+----
+typedef struct xfs_efd_log_format {
+     __uint16_t                efd_type;
+     __uint16_t                efd_size;
+     __uint32_t                efd_nextents;
+     __uint64_t                efd_efi_id;
+     xfs_extent_t              efd_extents[1];
+} xfs_efd_log_format_t;
+----
+
+*efd_type*::
+The signature of an EFI operation, 0x1236.  This value is in host-endian order,
+not big-endian like the rest of XFS.
+
+*efd_size*::
+Size of this log item.  Should be 1.
+
+*efd_nextents*::
+Number of extents to free.
+
+*efd_id*::
+A 64-bit number that binds the corresponding EFI log item to this EFD log item.
+
+*efd_extents*::
+Variable-length array of extents to be freed.  The array length is given by
++efi_nextents+.  The record type will be either +xfs_extent_64_t+ or
++xfs_extent_32_t+; this can be determined from the log item size (+oh_len+) and
+the number of extents (+efi_nextents+).
+
+[[Inode_Log_Item]]
+=== Inode Updates
+
+This operation records changes to an inode record.  There are several types of
+inode updates, each corresponding to different parts of the inode record.
+Allowing updates to proceed at a sub-inode granularity reduces contention for
+the inode, since different parts of the inode can be updated simultaneously.
+
+The actual buffer data are stored in subsequent log items.
+
+The inode log format header is as follows:
+
+[source, c]
+----
+typedef struct xfs_inode_log_format_64 {
+     __uint16_t                ilf_type;
+     __uint16_t                ilf_size;
+     __uint32_t                ilf_fields;
+     __uint16_t                ilf_asize;
+     __uint16_t                ilf_dsize;
+     __uint32_t                ilf_pad;
+     __uint64_t                ilf_ino;
+     union {
+          __uint32_t           ilfu_rdev;
+          uuid_t               ilfu_uuid;
+     } ilf_u;
+     __int64_t                 ilf_blkno;
+     __int32_t                 ilf_len;
+     __int32_t                 ilf_boffset;
+} xfs_inode_log_format_64_t;
+----
+
+*ilf_type*::
+The signature of an inode update operation, 0x123b.  This value is in
+host-endian order, not big-endian like the rest of XFS.
+
+*ilf_size*::
+Number of operations involved in this update, including this format operation.
+
+*ilf_fields*::
+Specifies which parts of the inode are being updated.  This can be certain
+combinations of the following:
+
+[options="header"]
+|=====
+| Flag                 | Inode changes to log include:
+| +XFS_ILOG_CORE+      | The standard inode fields.
+| +XFS_ILOG_DDATA+     | Data fork's local data.
+| +XFS_ILOG_DEXT+      | Data fork's extent list.
+| +XFS_ILOG_DBROOT+    | Data fork's B+tree root.
+| +XFS_ILOG_DEV+       | Data fork's device number.
+| +XFS_ILOG_UUID+      | Data fork's UUID contents.
+| +XFS_ILOG_ADATA+     | Attribute fork's local data.
+| +XFS_ILOG_AEXT+      | Attribute fork's extent list.
+| +XFS_ILOG_ABROOT+    | Attribute fork's B+tree root.
+| +XFS_ILOG_DOWNER+    | Change the data fork owner on replay.
+| +XFS_ILOG_AOWNER+    | Change the attr fork owner on replay.
+| +XFS_ILOG_TIMESTAMP+ | Timestamps are dirty, but not necessarily anything else.  Should never appear on disk.
+| +XFS_ILOG_NONCORE+   | ( +XFS_ILOG_DDATA+ \| +XFS_ILOG_DEXT+ \| +XFS_ILOG_DBROOT+ \| +XFS_ILOG_DEV+ \| +XFS_ILOG_UUID+ \| +XFS_ILOG_ADATA+ \| +XFS_ILOG_AEXT+ \| +XFS_ILOG_ABROOT+ \| +XFS_ILOG_DOWNER+ \| +XFS_ILOG_AOWNER+ )
+| +XFS_ILOG_DFORK+     | ( +XFS_ILOG_DDATA+ \| +XFS_ILOG_DEXT+ \| +XFS_ILOG_DBROOT+ )
+| +XFS_ILOG_AFORK+     | ( +XFS_ILOG_ADATA+ \| +XFS_ILOG_AEXT+ \| +XFS_ILOG_ABROOT+ )
+| +XFS_ILOG_ALL+       | ( +XFS_ILOG_CORE+ \| +XFS_ILOG_DDATA+ \| +XFS_ILOG_DEXT+ \| +XFS_ILOG_DBROOT+ \| +XFS_ILOG_DEV+ \| +XFS_ILOG_UUID+ \| +XFS_ILOG_ADATA+ \| +XFS_ILOG_AEXT+ \| +XFS_ILOG_ABROOT+ \| +XFS_ILOG_TIMESTAMP+ \| +XFS_ILOG_DOWNER+ \| +XFS_ILOG_AOWNER+ )
+|=====
+
+*ilf_asize*::
+Size of the attribute fork, in bytes.
+
+*ilf_dsize*::
+Size of the data fork, in bytes.
+
+*ilf_ino*::
+Absolute node number.
+
+*ilfu_rdev*::
+Device number information, for a device file update.
+
+*ilfu_uuid*::
+UUID, for a UUID update?
+
+*ilf_blkno*::
+Block number of the inode buffer, in sectors.
+
+*ilf_len*::
+Length of inode buffer, in sectors.
+
+*ilf_boffset*::
+Byte offset of the inode in the buffer.
+
+Be aware that there is a nearly identical +xfs_inode_log_format_32+ which may
+appear on disk.  It is the same as +xfs_inode_log_format_64+, except that it is
+missing the +ilf_pad+ field and is 52 bytes long as opposed to 56 bytes.
+
+[[Inode_Data_Log_Item]]
+=== Inode Data Log Item
+
+This region contains the new contents of a part of an inode, as described in
+the xref:Inode_Log_Item[previous section].  There are no magic numbers.
+
+If +XFS_ILOG_CORE+ is set in +ilf_fields+, the correpsonding data buffer must
+be in the format +struct xfs_icdinode+, which has the same format as the first
+96 bytes of an xref:On-disk_Inode[inode], but is recorded in host byte order.
+
+[[Buffer_Log_Item]]
+=== Buffer Log Item
+
+This operation writes parts of a buffer to disk.  The regions to write are
+tracked in the data map; the actual buffer data are stored in subsequent log
+items.
+
+[source, c]
+----
+typedef struct xfs_buf_log_format {
+     unsigned short            blf_type;
+     unsigned short            blf_size;
+     ushort                    blf_flags;
+     ushort                    blf_len;
+     __int64_t                 blf_blkno;
+     unsigned int              blf_map_size;
+     unsigned int              blf_data_map[XFS_BLF_DATAMAP_SIZE];
+} xfs_buf_log_format_t;
+----
+
+*blf_type*::
+Magic number to specify a buffer log item, 0x123c.
+
+*blf_size*::
+Number of buffer data items following this item.
+
+*blf_flags*::
+Specifies flags associated with the buffer item.  This can be any of the
+following:
+
+[options="header"]
+|=====
+| Flag                 | Description
+| +XFS_BLF_INODE_BUF+  | Inode buffer.  These must be recovered before replaying items that change this buffer.
+| +XFS_BLF_CANCEL+     | Don't recover this buffer, blocks are being freed.
+| +XFS_BLF_UDQUOT_BUF+ | User quota buffer, don't recover if there's a subsequent quotaoff.
+| +XFS_BLF_PDQUOT_BUF+ | Project quota buffer, don't recover if there's a subsequent quotaoff.
+| +XFS_BLF_GDQUOT_BUF+ | Group quota buffer, don't recover if there's a subsequent quotaoff.
+|=====
+
+*blf_len*::
+Number of sectors affected by this buffer.
+
+*blf_blkno*::
+Block number to write, in sectors.
+
+*blf_map_size*::
+The size of +blf_data_map+, in 32-bit words.
+
+*blf_data_map*::
+This variable-sized array acts as a dirty bitmap for the logged buffer.  Each
+1 bit represents a dirty region in the buffer, and each run of 1 bits
+corresponds to a subsequent log item containing the new contents of the buffer
+area.  Each bit represents +(blf_len * 512) / (blf_map_size * NBBY)+ bytes.
+
+[[Buffer_Data_Log_Item]]
+=== Buffer Data Log Item
+
+This region contains the new contents of a part of a buffer, as described in
+the xref:Buffer_Log_Item[previous section].  There are no magic numbers.
+
+[[Quota_Update_Log_Item]]
+=== Update Quota File
+
+This updates a block in a quota file.  The buffer data must be in the next log
+item.
+
+[source, c]
+----
+typedef struct xfs_dq_logformat {
+     __uint16_t                qlf_type;
+     __uint16_t                qlf_size;
+     xfs_dqid_t                qlf_id;
+     __int64_t                 qlf_blkno;
+     __int32_t                 qlf_len;
+     __uint32_t                qlf_boffset;
+} xfs_dq_logformat_t;
+----
+
+*qlf_type*::
+The signature of an inode create operation, 0x123e.  This value is in
+host-endian order, not big-endian like the rest of XFS.
+
+*qlf_size*::
+Size of this log item.  Should be 2.
+
+*qlf_id*::
+The user/group/project ID to alter.
+
+*qlf_blkno*::
+Block number of the quota buffer, in sectors.
+
+*qlf_len*::
+Length of the quota buffer, in sectors.
+
+*qlf_boffset*::
+Buffer offset of the quota data to update, in bytes.
+
+[[Quota_Update_Data_Log_Item]]
+=== Quota Update Data Log Item
+
+This region contains the new contents of a part of a buffer, as described in
+the xref:Quota_Update_Log_Item[previous section].  There are no magic numbers.
+
+[[Quota_Off_Log_Item]]
+=== Disable Quota Log Item
+
+A request to disable quota controls has the following format:
+
+[source, c]
+----
+typedef struct xfs_qoff_logformat {
+     unsigned short            qf_type;
+     unsigned short            qf_size;
+     unsigned int              qf_flags;
+     char                      qf_pad[12];
+} xfs_qoff_logformat_t;
+----
+
+*qf_type*::
+The signature of an inode create operation, 0x123d.  This value is in
+host-endian order, not big-endian like the rest of XFS.
+
+*qf_size*::
+Size of this log item.  Should be 1.
+
+*qf_flags*::
+Specifies which quotas are being turned off.  Can be a combination of the
+following:
+
+[options="header"]
+|=====
+| Flag                 | Quota type to disable
+| +XFS_UQUOTA_ACCT+    | User quotas.
+| +XFS_PQUOTA_ACCT+    | Project quotas.
+| +XFS_GQUOTA_ACCT+    | Group quotas.
+|=====
+
+[[Inode_Create_Log_Item]]
+=== Inode Creation Log Item
+
+This log item is created when inodes are allocated in-core.  When replaying
+this item, the specified inode records will be zeroed and some of the inode
+fields populated with default values.
+
+[source, c]
+----
+struct xfs_icreate_log {
+     __uint16_t                icl_type;
+     __uint16_t                icl_size;
+     __be32                    icl_ag;
+     __be32                    icl_agbno;
+     __be32                    icl_count;
+     __be32                    icl_isize;
+     __be32                    icl_length;
+     __be32                    icl_gen;
+};
+----
+
+*icl_type*::
+The signature of an inode create operation, 0x123f.  This value is in
+host-endian order, not big-endian like the rest of XFS.
+
+*icl_size*::
+Size of this log item.  Should be 1.
+
+*icl_ag*::
+AG number of the inode chunk to create.
+
+*icl_agbno*::
+AG block number of the inode chunk.
+
+*icl_count*::
+Number of inodes to initialize.
+
+*icl_isize*::
+Size of each inode, in bytes.
+
+*icl_length*::
+Length of the extent being initialized, in blocks.
+
+*icl_gen*::
+Inode generation number to write into the new inodes.
+
+== xfs_logprint Example
+
+Here's an example of dumping the XFS log contents with +xfs_logprint+:
+
+----
+# xfs_logprint /dev/sda
+xfs_logprint: /dev/sda contains a mounted and writable filesystem
+xfs_logprint:
+    data device: 0xfc03
+    log device: 0xfc03 daddr: 900931640 length: 879816
+
+cycle: 48	version: 2		lsn: 48,0	tail_lsn: 47,879760
+length of Log Record: 19968	prev offset: 879808		num ops: 53
+uuid: 24afeec2-f418-46a2-a573-10091f5e200e   format: little endian linux
+h_size: 32768
+----
+
+This is the log record header.
+
+----
+Oper (0): tid: 30483aec  len: 0  clientid: TRANS  flags: START 
+----
+
+This operation indicates that we're starting a transaction, so the next
+operation should record the transaction header.
+
+----
+Oper (1): tid: 30483aec  len: 16  clientid: TRANS  flags: none
+TRAN:    type: CHECKPOINT       tid: 30483aec       num_items: 50
+----
+
+This operation records a transaction header.  There should be fifty operations
+in this transaction and the transaction ID is 0x30483aec.
+
+----
+Oper (2): tid: 30483aec  len: 24  clientid: TRANS  flags: none
+BUF:  #regs: 2   start blkno: 145400496 (0x8aaa2b0)  len: 8  bmap size: 1  flags: 0x2000
+Oper (3): tid: 30483aec  len: 3712  clientid: TRANS  flags: none
+BUF DATA
+...
+Oper (4): tid: 30483aec  len: 24  clientid: TRANS  flags: none
+BUF:  #regs: 3   start blkno: 59116912 (0x3860d70)  len: 8  bmap size: 1  flags: 0x2000
+Oper (5): tid: 30483aec  len: 128  clientid: TRANS  flags: none
+BUF DATA
+ 0 43544241 49010000 fa347000 2c357000 3a40b200 13000000 2343c200 13000000 
+ 8 3296d700 13000000 375deb00 13000000 8a551501 13000000 56be1601 13000000 
+10 af081901 13000000 ec741c01 13000000 9e911c01 13000000 69073501 13000000 
+18 4e539501 13000000  6549501 13000000 5d0e7f00 14000000 c6908200 14000000 
+
+Oper (6): tid: 30483aec  len: 640  clientid: TRANS  flags: none
+BUF DATA
+ 0 7f47c800 21000000 23c0e400 21000000 2d0dfe00 21000000 e7060c01 21000000 
+ 8 34b91801 21000000 9cca9100 22000000 26e69800 22000000 4c969900 22000000 
+...
+90 1cf69900 27000000 42f79c00 27000000  6a99e00 27000000  6a99e00 27000000 
+98  6a99e00 27000000  6a99e00 27000000  6a99e00 27000000  6a99e00 27000000 
+----
+
+Operations 4-6 describe two updates to a single dirty buffer at disk address
+59,116,912.  The first chunk of dirty data is 128 bytes long.  Notice how the
+first four bytes of the first chunk is 0x43544241?  Remembering that log items
+are in host byte order, reverse that to 0x41425443, which is the magic number
+for the free space B+tree ordered by size.
+
+The second chunk is 640 bytes.  There are more buffer changes, so we'll skip
+ahead a few operations:
+
+----
+Oper (19): tid: 30483aec  len: 56  clientid: TRANS  flags: none
+INODE: #regs: 2   ino: 0x63a73b4e  flags: 0x1   dsize: 40
+        blkno: 1412688704  len: 16  boff: 7168
+Oper (20): tid: 30483aec  len: 96  clientid: TRANS  flags: none
+INODE CORE
+magic 0x494e mode 0100600 version 2 format 3
+nlink 1 uid 1000 gid 1000
+atime 0x5633d58d mtime 0x563a391b ctime 0x563a391b
+size 0x109dc8 nblocks 0x111 extsize 0x0 nextents 0x1b
+naextents 0x0 forkoff 0 dmevmask 0x0 dmstate 0x0
+flags 0x0 gen 0x389071be
+----
+
+This is an update to the core of inode 0x63a73b4e.  There were similar inode
+core updates after this, so we'll skip ahead a bit:
+
+----
+Oper (32): tid: 30483aec  len: 56  clientid: TRANS  flags: none
+INODE: #regs: 3   ino: 0x4bde428  flags: 0x5   dsize: 16
+        blkno: 79553568  len: 16  boff: 4096
+Oper (33): tid: 30483aec  len: 96  clientid: TRANS  flags: none
+INODE CORE
+magic 0x494e mode 0100644 version 2 format 2
+nlink 1 uid 1000 gid 1000
+atime 0x563a3924 mtime 0x563a3931 ctime 0x563a3931
+size 0x1210 nblocks 0x2 extsize 0x0 nextents 0x1
+naextents 0x0 forkoff 0 dmevmask 0x0 dmstate 0x0
+flags 0x0 gen 0x2829c6f9
+Oper (34): tid: 30483aec  len: 16  clientid: TRANS  flags: none
+EXTENTS inode data
+----
+
+This inode update changes both the core and also the data fork.  Since we're
+changing the block map, it's unsurprising that one of the subsequent operations
+is an EFI:
+
+----
+Oper (37): tid: 30483aec  len: 32  clientid: TRANS  flags: none
+EFI:  #regs: 1    num_extents: 1  id: 0xffff8801147b5c20
+(s: 0x720daf, l: 1) 
+\----------------------------------------------------------------------------
+Oper (38): tid: 30483aec  len: 32  clientid: TRANS  flags: none
+EFD:  #regs: 1    num_extents: 1  id: 0xffff8801147b5c20
+\----------------------------------------------------------------------------
+Oper (39): tid: 30483aec  len: 24  clientid: TRANS  flags: none
+BUF:  #regs: 2   start blkno: 8 (0x8)  len: 8  bmap size: 1  flags: 0x2800
+Oper (40): tid: 30483aec  len: 128  clientid: TRANS  flags: none
+AGF Buffer: XAGF  
+ver: 1  seq#: 0  len: 56308224  
+root BNO: 18174905  CNT: 18175030
+level BNO: 2  CNT: 2
+1st: 41  last: 46  cnt: 6  freeblks: 35790503  longest: 19343245
+\----------------------------------------------------------------------------
+Oper (41): tid: 30483aec  len: 24  clientid: TRANS  flags: none
+BUF:  #regs: 3   start blkno: 145398760 (0x8aa9be8)  len: 8  bmap size: 1  flags: 0x2000
+Oper (42): tid: 30483aec  len: 128  clientid: TRANS  flags: none
+BUF DATA
+Oper (43): tid: 30483aec  len: 128  clientid: TRANS  flags: none
+BUF DATA
+\----------------------------------------------------------------------------
+Oper (44): tid: 30483aec  len: 24  clientid: TRANS  flags: none
+BUF:  #regs: 3   start blkno: 145400224 (0x8aaa1a0)  len: 8  bmap size: 1  flags: 0x2000
+Oper (45): tid: 30483aec  len: 128  clientid: TRANS  flags: none
+BUF DATA
+Oper (46): tid: 30483aec  len: 3584  clientid: TRANS  flags: none
+BUF DATA
+\----------------------------------------------------------------------------
+Oper (47): tid: 30483aec  len: 24  clientid: TRANS  flags: none
+BUF:  #regs: 3   start blkno: 59066216 (0x3854768)  len: 8  bmap size: 1  flags: 0x2000
+Oper (48): tid: 30483aec  len: 128  clientid: TRANS  flags: none
+BUF DATA
+Oper (49): tid: 30483aec  len: 768  clientid: TRANS  flags: none
+BUF DATA
+----
+
+Here we see an EFI, followed by an EFD, followed by updates to the AGF and the
+free space B+trees.  Most probably, we just unmapped a few blocks from a file.
+
+----
+Oper (50): tid: 30483aec  len: 56  clientid: TRANS  flags: none
+INODE: #regs: 2   ino: 0x3906f20  flags: 0x1   dsize: 16
+        blkno: 59797280  len: 16  boff: 0
+Oper (51): tid: 30483aec  len: 96  clientid: TRANS  flags: none
+INODE CORE
+magic 0x494e mode 0100644 version 2 format 2
+nlink 1 uid 1000 gid 1000
+atime 0x563a3938 mtime 0x563a3938 ctime 0x563a3938
+size 0x0 nblocks 0x0 extsize 0x0 nextents 0x0
+naextents 0x0 forkoff 0 dmevmask 0x0 dmstate 0x0
+flags 0x0 gen 0x35ed661
+\----------------------------------------------------------------------------
+Oper (52): tid: 30483aec  len: 0  clientid: TRANS  flags: COMMIT 
+----
+
+One more inode core update and this transaction commits.

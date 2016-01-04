@@ -85,6 +85,7 @@
 				<member>Add missing field definitions.</member>
 				<member>Add some missing xfs_db examples.</member>
 				<member>Add an overview of XFS.</member>
+				<member>Document the journal format.</member>
 			</simplelist>
 		</revdescription>
 	</revision>
