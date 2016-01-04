@@ -16,16 +16,35 @@ High Level Design
 
 [partintro]
 --
-This document describes the layout of an XFS filesystem.
+XFS is a high performance filesystem which was designed to maximize parallel
+throughput and to scale up to extremely large 64-bit storage systems.
+Originally developed by SGI in October 1993 for IRIX, XFS can handle large
+files, large filesystems, many inodes, large directories, large file
+attributes, and large allocations.  Filesystems are optimized for parallel
+access by splitting the storage device into semi-autonomous allocation groups.
+XFS employs branching trees (B+ trees) to facilitate fast searches of large
+lists; it also uses delayed extent-based allocation to improve data contiguity
+and IO performance.
 
-It shows how to manually inspect it by showing examples using the xfs_db
-user-space tool supplied with the XFS filesystem driver.
+This document describes the on-disk layout of an XFS filesystem and how to use
+the debugging tools +xfs_db+ and +xfs_logprint+ to inspect the metadata
+structures.  It also describes how on-disk metadata relates to the higher level
+design goals.
 
-TODO: More description.
+The information contained in this document derives from the XFS source code in
+the Linux kernel as of v4.3.  This book's source code is available at
++git://git.kernel.org/pub/scm/fs/xfs/xfs-documentation.git+.  Feedback should
+be sent to the XFS mailing list, currently at +xfs@oss.sgi.com+.
+
+[NOTE]
+All fields in XFS metadata structures are in big-endian byte order except for
+log items which are formatted in host order.
 --
 
 // Push titles down one level
 :leveloffset: 1
+
+include::overview.asciidoc[]
 
 include::common_types.asciidoc[]
 

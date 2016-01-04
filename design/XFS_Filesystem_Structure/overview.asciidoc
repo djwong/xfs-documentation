@@ -1,0 +1,38 @@
+= Overview
+
+XFS presents to users a standard Unix filesystem interface: a rooted
+tree of directories, files, symbolic links, and devices.  All five of those
+entities are represented inside the filesystem by an index node, or ``inode'';
+each node is uniquely referenced by an inode number.  Directories consist of
+(name, inode number) tuples and it is possible for multiple tuples to contain
+the same inode number.  Data blocks are associated with files by means of a
+block map in each index node.  It is also possible to attach (key, value)
+tuples to any index node; these are known as ``extended attributes'', which
+extend beyond the standard Unix file attributes.
+
+Internally, XFS filesystems are divided into a number of equally sized chunks
+called Allocation Groups.  Each AG can almost be thought of as an individual
+filesystem that maintains its own space usage, index nodes, and other secondary
+metadata.  Having multiple AGs allows XFS to handle most operations in parallel
+without degrading performance as the number of concurrent accesses increases.
+Each allocation group uses multiple B+trees to maintain bookkeeping records
+such as the locations of free blocks, the locations of allocated inodes, and
+the locations of free inodes.
+
+Files, symbolic links, and directories can have up to two block maps, or
+``forks'', which associate filesystems blocks with a particular file or
+directory.  The ``attribute fork'' tracks blocks used to store and index
+extended attributes, whereas the ``data fork'' tracks file data blocks,
+symbolic link targets, or directory blocks, depending on the type of the inode
+record.  Both forks associate a logical offset with an extent of physical
+blocks, which makes sparse files and directories possible.  Directory entries
+and extended attributes are contained inside a second-level data structure
+within the blocks that are mapped by the forks.  This structure consists of
+variable-length directory or attribute records and possible a second B+tree to
+index these records.
+
+XFS employs a journalling log in which metadata changes are collected so that
+filesystem operations can be carried out atomically in the case of a crash.
+Furthermore, there is the concept of a real-time device wherein allocations are
+tracked more simply and in larger chunks to reduce jitter in allocation
+latency.

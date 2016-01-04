@@ -1,7 +1,7 @@
 <subtitle>3rd Edition</subtitle>
 <!--
 <abstract>
-	<para>This book documents the XFS Filesystem Structure</para>
+	<para>This book documents the on-disk structure of the XFS filesystem.</para>
 </abstract>
 -->
 <corpauthor>
@@ -84,6 +84,7 @@
 				<member>Miscellaneous fixes.</member>
 				<member>Add missing field definitions.</member>
 				<member>Add some missing xfs_db examples.</member>
+				<member>Add an overview of XFS.</member>
 			</simplelist>
 		</revdescription>
 	</revision>

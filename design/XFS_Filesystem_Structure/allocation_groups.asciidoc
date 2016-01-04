@@ -1,10 +1,11 @@
 [[Allocation_Groups]]
 = Allocation Groups
 
-XFS filesystems are divided into a number of equally sized chunks called
-Allocation Groups. Each AG can almost be thought of as an individual filesystem
-that maintains its own space usage. Each AG can be up to one terabyte in size
-(512 bytes × 2^31^), regardless of the underlying device's sector size.
+As mentioned earlier, XFS filesystems are divided into a number of equally
+sized chunks called Allocation Groups. Each AG can almost be thought of as an
+individual filesystem that maintains its own space usage. Each AG can be up to
+one terabyte in size (512 bytes × 2^31^), regardless of the underlying device's
+sector size.
 
 Each AG has the following characteristics:
 
