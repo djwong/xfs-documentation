@@ -5,16 +5,16 @@
 Only v2 directories covered here. v1 directories are obsolete.
 
 [NOTE]
-The term "block" in this section will refer to directory blocks, not filesystem
+The term ``block'' in this section will refer to directory blocks, not filesystem
 blocks unless otherwise specified.
 
-The size of a "directory block" is defined by the xref:Superblocks[superblock's]
+The size of a ``directory block'' is defined by the xref:Superblocks[superblock's]
 +sb_dirblklog+ value. The size in bytes = +sb_blocksize+ × 2^sb_dirblklog^.
 For example, if +sb_blocksize+ = 4096 and +sb_dirblklog+ = 2, the directory block
 size is 16384 bytes. Directory blocks are always allocated in multiples based on
 +sb_dirblklog+. Directory blocks cannot be more that 65536 bytes in size.
 
-All directory entries contain the following "data":
+All directory entries contain the following ``data'':
 
 * The entry's name (counted string consisting of a single byte +namelen+
 followed by +name+ consisting of an array of 8-bit chars without a NULL
@@ -26,17 +26,17 @@ directories.
 
 * An +offset+ or +tag+ used for iterative readdir calls.
 
-All non-shortform directories also contain two additional structures: "leaves"
-and "freespace indexes".
+All non-shortform directories also contain two additional structures: ``leaves''
+and ``freespace indexes''.
 
 * Leaves contain the sorted hashed name value (+xfs_da_hashname()+ in
-xfs_da_btree.c) and associated "address" which points to the effective offset
+xfs_da_btree.c) and associated ``address'' which points to the effective offset
 into the directory's data structures. Leaves are used to optimise lookup
 operations.
 
 * Freespace indexes contain free space/empty entry tracking for quickly finding an
 appropriately sized location for new entries. They maintain the largest free
-space for each "data" block.
+space for each ``data'' block.
 
 A few common types are used for the directory structures:
 
@@ -52,11 +52,11 @@ typedef __uint32_t xfs_dir2_dataptr_t;
 
 * Directory entries are stored within the inode.
 
-* The only data stored is the name, inode number, and offset.  No "leaf" or
-"freespace index" information is required as an inode can only store a few
+* The only data stored is the name, inode number, and offset.  No ``leaf'' or
+``freespace index'' information is required as an inode can only store a few
 entries.
 
-* "." is not stored (as it's in the inode itself), and ".." is a dedicated
+* ``.'' is not stored (as it's in the inode itself), and ``..'' is a dedicated
 +parent+ field in the header.
 
 * The number of directories that can be stored in an inode depends on the
@@ -216,7 +216,7 @@ cO: 00 84 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
 ----
 
 Next, an entry is deleted (frame000001.tst), and any entries after the deleted
-entry are moved or compacted to "cover" the hole:
+entry are moved or compacted to ``cover'' the hole:
 
 ----
 xfs_db> inode <inode#>
@@ -330,13 +330,13 @@ u3.sfdir3.list[6].filetype = 2
 
 When the shortform directory space exceeds the space in an inode, the directory
 data is moved into a new single directory block outside the inode. The inode's
-format is changed from "local" to "extent". Following is a list of points about
+format is changed from ``local'' to ``extent'' Following is a list of points about
 block directories.
 
-* All directory data is stored within the one directory block, including "." and
-".." entries which are mandatory.
+* All directory data is stored within the one directory block, including ``.'' and
+``..'' entries which are mandatory.
 
-* The block also contains "leaf" and "freespace index" information.
+* The block also contains ``leaf'' and ``freespace index'' information.
 
 * The location of the block is defined by the inode's in-core
 xref:Extent_List[extent list]: the +di_u.u_bmx[0]+ value. The file offset in
@@ -494,7 +494,7 @@ Following is a diagram of how these pieces fit together for a block directory.
 .Block directory layout
 image::images/43.png[]
 
-* The magic number in the header is "XD2B" (0x58443242).
+* The magic number in the header is ``XD2B'' (0x58443242).
 
 * The +tag+ in the +xfs_dir2_data_entry_t+ structure stores its offset from the
 start of the block.
@@ -556,7 +556,7 @@ core.nextents = 1
 u.bmx[0] = [startoff,startblock,blockcount,extentflag] 0:[0,2097164,1,0]
 ----
 
-Go to the "startblock" and show the raw disk data:
+Go to the ``startblock'' and show the raw disk data:
 
 ----
 xfs_db> dblock 0
@@ -584,7 +584,7 @@ xfs_db> p
 130: ff ff 0e 78 00 00 00 00 00 00 00 00 00 00 00 00 ...x............
 ----
 
-The "leaf" and "tail" structures are stored at the end of the block, so as the
+The ``leaf'' and ``tail'' structures are stored at the end of the block, so as the
 directory grows, the middle is filled in:
 
 ----
@@ -652,7 +652,7 @@ btail.stale = 0
 ----
 
 [NOTE]
-For block directories, all xfs_db fields are preceded with "b".
+For block directories, all xfs_db fields are preceded with ``b''.
 
 For a simple lookup example, the hash of frame000000.tst is 0xb3a040b4. Looking
 up that value, we get an address of 0x6. Multiply that by 8, it becomes offset
@@ -692,7 +692,7 @@ btail.count = 10
 btail.stale = 1
 ----
 
-A new "bestfree" value is added for the entry, the start of the entry is marked
+A new ``bestfree'' value is added for the entry, the start of the entry is marked
 as unused with 0xffff (which overwrites the inode number for an actual entry),
 and the length of the space. The tag remains intact at the +offset+length -
 sizeof(tag)+. The address for the hash is also cleared. The affected areas are
@@ -721,24 +721,24 @@ ff0: f3 a0 40 b4 00 00 00 1a 00 00 00 0a *00 00 00 01* .................
 
 Once a Block Directory has filled the block, the directory data is changed into
 a new format. It still uses xref:Data_Extents[extents] and the same basic
-structures, but the "data" and "leaf" are split up into their own extents. The
-"leaf" information only occupies one extent. As "leaf" information is more
-compact than "data" information, more than one "data" extent is common.
+structures, but the ``data'' and ``leaf'' are split up into their own extents. The
+``leaf'' information only occupies one extent. As ``leaf'' information is more
+compact than ``data'' information, more than one ``data'' extent is common.
 
 * Block to Leaf conversions retain the existing block for the data entries and
 allocate a new block for the leaf and freespace index information.
 
 * As with all directories, data blocks must start at logical offset zero.
 
-* The "leaf" block has a special offset defined by +XFS_DIR2_LEAF_OFFSET+.
+* The ``leaf'' block has a special offset defined by +XFS_DIR2_LEAF_OFFSET+.
 Currently, this is 32GB and in the extent view, a block offset of
 32GB / +sb_blocksize+. On a 4KB block filesystem, this is 0x800000 (8388608
 decimal).
 
-* Blocks with directory entries ("data" extents) have the magic number "X2D2"
+* Blocks with directory entries (``data'' extents) have the magic number ``X2D2''
 (0x58443244).
 
-* The "data" extents have a new header (no "leaf" data):
+* The ``data'' extents have a new header (no ``leaf'' data):
 
 [source, c]
 ----
@@ -756,7 +756,7 @@ Union of directory and unused entries, exactly the same as in a block directory.
 
 // split lists
 
-* The "leaf" extent uses the following structures:
+* The ``leaf'' extent uses the following structures:
 
 [source, c]
 ----
@@ -844,7 +844,7 @@ Padding to maintain alignment.
 * The size of the +ents+ array is specified by +hdr.count+.
 
 * The size of the +bests+ array is specified by the +tail.bestcount+, which is
-also the number of "data" blocks for  the directory. The bests array maintains
+also the number of ``data'' blocks for  the directory. The bests array maintains
 each data block's +bestfree[0].length+ value.
 
 .Leaf directory free entry detail
@@ -876,8 +876,8 @@ u.bmx[0-2] = [startoff,startblock,blockcount,extentflag]
           2:[8388608,4718605,1,0]
 ----
 
-As can be seen in this example, three blocks are used for "data" in two extents,
-and the "leaf" extent has a logical offset of 8388608 blocks (32GB).
+As can be seen in this example, three blocks are used for ``data'' in two extents,
+and the ``leaf'' extent has a logical offset of 8388608 blocks (32GB).
 
 Examining the first block:
 
@@ -931,9 +931,9 @@ du[119].tag = 0xff0
 ----
 
 [NOTE]
-The xfs_db field output is preceded by a "d" for "data".
+The xfs_db field output is preceded by a ``d'' for ``data''.
 
-The next "data" block:
+The next ``data'' block:
 
 ----
 xfs_db> dblock 1
@@ -1015,7 +1015,7 @@ du[3].length = 0xf90
 du[3].tag = 0x70
 ----
 
-Examining the "leaf" block (with the fields preceded by an "l" for "leaf"):
+Examining the ``leaf'' block (with the fields preceded by an ``l'' for ``leaf''):
 
 ----
 xfs_db> dblock 8388608
@@ -1040,7 +1040,7 @@ ltail.bestcount = 3
 ----
 
 Note how the +lbests+ array correspond with the +bestfree[0].length+ values in
-the "data" blocks:
+the ``data'' blocks:
 
 ----
 xfs_db> dblock 0
@@ -1098,28 +1098,28 @@ spaces.
 [[Node_Directories]]
 == Node Directories
 
-When the "leaf" information fills a block, the extents undergo another
-separation. All "freeindex" information moves into its own extent. Like Leaf
-Directories, the "leaf" block maintained the best free space information for
-each "data" block. This is not possible with more than one leaf.
+When the ``leaf'' information fills a block, the extents undergo another
+separation. All ``freeindex'' information moves into its own extent. Like Leaf
+Directories, the ``leaf'' block maintained the best free space information for
+each ``data'' block. This is not possible with more than one leaf.
 
-* The "data" blocks stay the same as leaf directories.
+* The ``data'' blocks stay the same as leaf directories.
 
-* After the "freeindex" data moves to its own block, it is possible for the
+* After the ``freeindex'' data moves to its own block, it is possible for the
 leaf data to fit within a single leaf block.  This single leaf block has a
 magic number of +XFS_DIR2_LEAFN_MAGIC+ (0xd2ff).
 
-* The "leaf" blocks eventually change into a B+tree with the generic B+tree
-header pointing to directory "leaves" as described in
+* The ``leaf'' blocks eventually change into a B+tree with the generic B+tree
+header pointing to directory ``leaves'' as described in
 xref:Leaf_Directories[Leaf Directories]. Blocks with leaf data still have the
 +LEAFN_MAGIC+ magic number as outlined above.  The top-level tree blocks are
-called "nodes" and have a magic number of +XFS_DA_NODE_MAGIC+ (0xfebe).
+called ``nodes'' and have a magic number of +XFS_DA_NODE_MAGIC+ (0xfebe).
 
 * Distinguishing between a combined leaf/freeindex block (+LEAF1_MAGIC+), a
 leaf-only block (+LEAFN_MAGIC+), and a btree node block (+NODE_MAGIC+) can only
 be done by examining the magic number.
 
-* The new "freeindex" block(s) only contains the bests for each data block.
+* The new ``freeindex'' block(s) only contains the bests for each data block.
 
 * The freeindex block uses the following structures:
 
@@ -1134,7 +1134,7 @@ typedef struct xfs_dir2_free_hdr {
 ----
 
 *magic*::
-The magic number of the free block, "XD2F" (0x0x58443246).
+The magic number of the free block, ``XD2F'' (0x0x58443246).
 
 *firstdb*::
 The starting directory block number for the bests array.
@@ -1212,7 +1212,7 @@ start of the block.
 block is freed, the data extents contain a hole, and the freeindex's +hdr.nused+
 value is decremented and the associated +bests[]+ entry is set to 0xffff. 
 
-* As the first data block always contains "." and "..", it's invalid for the
+* As the first data block always contains ``.'' and ``..'', it's invalid for the
 directory to have a hole at the start.
 
 * The freeindex's +hdr.nvalid+ should always be the same as the number of
@@ -1297,7 +1297,7 @@ du[5].length = 0x3f50
 du[5].tag = 0
 ----
 
-Next, the "node" block, the fields are preceded with 'n' for node blocks:
+Next, the ``node'' block, the fields are preceded with 'n' for node blocks:
 
 ----
 xfs_db> dblock 8388608
@@ -1409,9 +1409,9 @@ TODO: Example with a hole in the middle
 == B+tree Directories
 
 When the extent map in an inode grows beyond the inode's space, the inode format
-is changed to a "btree". The inode contains a filesystem block point to the
+is changed to a ``btree''. The inode contains a filesystem block point to the
 B+tree extent map for the directory's blocks. The B+tree extents contain the
-extent map for the "data", "node", "leaf", and "freeindex" information as
+extent map for the ``data'', ``node'', ``leaf'', and ``freeindex'' information as
 described in Node Directories.
 
 Refer to the previous section on B+tree xref:Btree_Extent_List[Data Extents] for

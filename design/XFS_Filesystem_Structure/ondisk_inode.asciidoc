@@ -15,7 +15,7 @@ image::images/23.png[]
 * The core contains what the inode represents, stat data, and information
 describing the data and attribute forks.
 
-* The +di_u+ "data fork" contains normal data related to the inode. Its contents
+* The +di_u+ ``data fork'' contains normal data related to the inode. Its contents
 depends on the file type specified by +di_core.di_mode+ (eg. regular file,
 directory, link, etc) and how much information is contained in the file which
 determined by +di_core.di_format+. The following union to represent this data is
@@ -34,7 +34,7 @@ union {
 } di_u;
 ----
 
-* The +di_a+ "attribute fork" contains extended attributes. Its layout is
+* The +di_a+ ``attribute fork'' contains extended attributes. Its layout is
 determined by the +di_core.di_aformat+ value. Its representation is declared as
 follows:
 
@@ -54,7 +54,7 @@ within the union are directly cast depending on the +di_mode/di_format+ and
 explain the various structures in use within the inode.
 
 The remaining space in the inode after +di_next_unlinked+ where the two forks
-are located is called the inode's "literal area". This starts at offset 100
+are located is called the inode's ``literal area''. This starts at offset 100
 (0x64) in the inode.
 
 The space for each of the two forks in the literal area is determined by the
@@ -103,7 +103,7 @@ struct xfs_dinode_core {
 ----
 
 *di_magic*::
-The inode signature; these two bytes are 0x494e, or "IN" in ASCII.
+The inode signature; these two bytes are ``IN'' (0x494e).
 
 *di_mode*::
 Specifies the mode access bits and type of file using the standard S_Ixxx values
@@ -117,13 +117,13 @@ converted on the fly to v2 when required.
 
 *di_format*::
 Specifies the format of the data fork in conjunction with the +di_mode+ type.
-This can be one of several values. For directories and links, it can be "local"
-where all metadata associated with the file is within the inode; "extents" where
+This can be one of several values. For directories and links, it can be ``local''
+where all metadata associated with the file is within the inode; ``extents'' where
 the inode contains an array of extents to other filesystem blocks which contain
-the associated metadata or data; or "btree" where the inode contains a B+tree
+the associated metadata or data; or ``btree'' where the inode contains a B+tree
 root node which points to filesystem blocks containing the metadata or data.
 Migration between the formats depends on the amount of metadata associated with
-the inode. "dev" is used for character and block devices while "uuid" is
+the inode. ``dev'' is used for character and block devices while ``uuid'' is
 currently not used.
 
 [source, c]
@@ -171,7 +171,7 @@ Incremented on flush.
 
 Specifies the last access time of the files using UNIX time conventions the
 following structure. This value may be undefined if the filesystem is mounted
-with the "noatime" option.  XFS supports timestamps with nanosecond resolution:
+with the ``noatime'' option.  XFS supports timestamps with nanosecond resolution:
 
 [source, c]
 ----
@@ -226,7 +226,7 @@ details.
 *di_aformat*::
 
 Specifies the format of the attribute fork. This uses the same values as
-+di_format+, but restricted to "local", "extents" and "btree" formats for
++di_format+, but restricted to ``local'', ``extents'' and ``btree'' formats for
 extended attribute data.
 
 *di_dmevmask*::
@@ -312,10 +312,10 @@ image::images/28.png[]
 
 The structure of the inode's data fork based is on the inode's type and
 +di_format+. It always starts at offset 100 (0x64) in the inode's space which is
-the start of the inode's "literal area". The size of the data fork is determined
+the start of the inode's ``literal area''. The size of the data fork is determined
 by the type and format. The maximum size is determined by the inode size and
 +di_forkoff+. In code, use the +XFS_DFORK_PTR+ macro specifying +XFS_DATA_FORK+
-for the "which" parameter. Alternatively, the +XFS_DFORK_DPTR+ macro can be
+for the ``which'' parameter. Alternatively, the +XFS_DFORK_DPTR+ macro can be
 used.
 
 Each of the following sub-sections summarises the contents of the data fork
@@ -403,7 +403,7 @@ does not contain any extended attributes.  If non-zero, the attribute fork's
 byte offset into the literal area can be computed from +di_forkoff × 8+.
 Attributes must be allocated on a 64-bit boundary on the disk. To access the
 extended attributes in code, use the +XFS_DFORK_PTR+ macro specifying
-+XFS_ATTR_FORK+ for the "which" parameter.  Alternatively, the +XFS_DFORK_APTR+
++XFS_ATTR_FORK+ for the ``which'' parameter.  Alternatively, the +XFS_DFORK_APTR+
 macro can be used.
 
 The structure of the attribute fork depends on the +di_aformat+ value
@@ -429,13 +429,13 @@ xref:Extended_Attributes[Extended Attributes] in this document.
 [[Extended_Attribute_Versions]]
 === Extended Attribute Versions
 
-Extended attributes come in two versions: "attr1" or "attr2". The attribute
+Extended attributes come in two versions: ``attr1'' or ``attr2''. The attribute
 version is specified by the +XFS_SB_VERSION2_ATTR2BIT+  flag in the
 +sb_features2+ field in the superblock. It determines how the inode's extra
 space is split between +di_u+ and +di_a+ forks which also determines how the
 +di_forkoff+ value is maintained in the inode's core.
 
-With "attr1" attributes, the +di_forkoff+ is set to somewhere in the middle of
+With ``attr1'' attributes, the +di_forkoff+ is set to somewhere in the middle of
 the space between the core and end of the inode and never changes (which has the
 effect of artificially limiting the space for data information). As the data
 fork grows, when it gets to +di_forkoff+, it will move the data to the next
@@ -443,7 +443,7 @@ format level (ie. local < extent < btree). If very little space is used
 for either attributes or data, then a good portion of the available inode space
 is wasted with this version.
 
-"Attr2" was introduced to maximum the utilisation of the inode's literal area.
+``attr2'' was introduced to maximum the utilisation of the inode's literal area.
 The +di_forkoff+ starts at the end of the inode and works its way to the data
 fork as attributes are added. Attr2 is highly recommended if extended attributes
 are used.

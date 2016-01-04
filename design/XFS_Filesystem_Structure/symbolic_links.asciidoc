@@ -1,15 +1,15 @@
 [[Symbolic_Links]]
 = Symbolic Links
 
-Symbolic links to a file can be stored in one of two formats: "local" and
-"extents". The length of the symlink contents is always specified by the inode's
+Symbolic links to a file can be stored in one of two formats: ``local'' and
+``extents''. The length of the symlink contents is always specified by the inode's
 +di_size+ value.
 
 
 [[Shortform_Symbolic_Links]]
 == Short Form Symbolic Links
 
-Symbolic links are stored with the "local" +di_format+ if the symbolic link can
+Symbolic links are stored with the ``local'' +di_format+ if the symbolic link can
 fit within the inode's data fork. The link data is an array of characters
 (+di_symlink+ array in the data fork union).
 
@@ -58,7 +58,7 @@ xfs_db> p
 
 If the length of the symbolic link exceeds the space available in the inode's
 data fork, the link is moved to a new filesystem block and the inode's
-+di_format+ is changed to "extents". The location of the block(s) is specified
++di_format+ is changed to ``extents''. The location of the block(s) is specified
 by the data fork's +di_bmx[]+ array. In the significant majority of cases, this
 will be in one filesystem block as a symlink cannot be longer than 1024
 characters.

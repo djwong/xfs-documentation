@@ -3,7 +3,7 @@
 
 XFS manages space using extents, which are defined as a starting location and
 length.  A fork in an XFS inode maps a logical offset to a space extent.  This
-enables a file's extent map to support sparse files (i.e. "holes" in the file).
+enables a file's extent map to support sparse files (i.e. ``holes'' in the file).
 A flag is also used to specify if the extent has been preallocated but has not
 yet been written (unwritten extent).
 
@@ -259,7 +259,7 @@ struct xfs_btree_lblock {
 ----
 
 *bb_magic*::
-Specifies the magic number for the BMBT block: "BMAP" (0x424d4150).
+Specifies the magic number for the BMBT block: ``BMAP'' (0x424d4150).
 
 *bb_level*::
 The level of the tree in which this block is found.  If this value is 0, this

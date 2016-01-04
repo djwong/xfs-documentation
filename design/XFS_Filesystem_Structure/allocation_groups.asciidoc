@@ -93,7 +93,7 @@ struct xfs_sb
 };
 ----
 *sb_magicnum*::
-Identifies the filesystem. Its value is +XFS_SB_MAGIC = 0x58465342 "XFSB"+.
+Identifies the filesystem. Its value is +XFS_SB_MAGIC+ ``XFSB'' (0x58465342).
 
 *sb_blocksize*::
 The size of a basic unit of space allocation in bytes. Typically, this is 4096
@@ -269,7 +269,7 @@ Miscellaneous flags.
 |=====
 
 *sb_shared_vn*::
-Reserved and must be zero ("vn" stands for version number).
+Reserved and must be zero (``vn'' stands for version number).
 
 *sb_inoalignmt*::
 Inode chunk alignment in fsblocks.
@@ -413,8 +413,8 @@ All block numbers, indexes, and counts are AG relative.
 === AG Free Space Block
 
 The second sector in an AG contains the information about the two free space
-B+trees and associated free space information for the AG. The "AG Free Space
-Block", also knows as the +AGF+, uses the following structure:
+B+trees and associated free space information for the AG. The ``AG Free Space
+Block'' also knows as the +AGF+, uses the following structure:
 
 [source, c]
 ----
@@ -441,7 +441,7 @@ index 0 for the free space B+tree indexed by block number; and index 1 for the
 free space B+tree indexed by extent size.
 
 *agf_magicnum*::
-Specifies the magic number for the AGF sector: "XAGF" (0x58414746).
+Specifies the magic number for the AGF sector: ``XAGF'' (0x58414746).
 
 *agf_versionnum*::
 Set to +XFS_AGF_VERSION+ which is currently 1.
@@ -460,17 +460,17 @@ Specifies the block number for the root of the two free space B+trees.
 
 *agf_levels*::
 Specifies the level or depth of the two free space B+trees. For a fresh AG, this
-will be one, and the "roots" will point to a single leaf of level 0.
+will be one, and the ``roots'' will point to a single leaf of level 0.
 
 *agf_flfirst*::
-Specifies the index of the first "free list" block. Free lists are covered in
+Specifies the index of the first ``free list'' block. Free lists are covered in
 more detail later on.
 
 *agf_fllast*::
-Specifies the index of the last "free list" block.
+Specifies the index of the last ``free list'' block.
 
 *agf_flcount*::
-Specifies the number of blocks in the "free list".
+Specifies the number of blocks in the ``free list''.
 
 *agf_freeblks*::
 Specifies the current number of free blocks in the AG.
@@ -551,8 +551,8 @@ typedef __be32 xfs_alloc_ptr_t;
 
 * As the free space tracking is AG relative, all the block numbers are only
 32-bits.
-* The +bb_magic+ value depends on the B+tree: "ABTB" (0x41425442) for the block
-offset B+tree, "ABTC" (0x41425443) for the block count B+tree.
+* The +bb_magic+ value depends on the B+tree: ``ABTB'' (0x41425442) for the block
+offset B+tree, ``ABTC'' (0x41425443) for the block count B+tree.
 * The +xfs_btree_sblock_t+ header is used for intermediate B+tree node as well
 as the leaves.
 * For a typical 4KB filesystem block size, the offset for the +xfs_alloc_ptr_t+
@@ -741,7 +741,7 @@ struct xfs_agi {
 }
 ----
 *agi_magicnum*::
-Specifies the magic number for the AGI sector: "XAGI" (0x58414749).
+Specifies the magic number for the AGI sector: ``XAGI'' (0x58414749).
 
 *agi_versionnum*::
 Set to +XFS_AGI_VERSION+ which is currently 1.

@@ -65,7 +65,7 @@ struct xfs_dqblk {
 
 *d_magic*::
 Specifies the signature where these two bytes are 0x4451 (+XFS_DQUOT_MAGIC+),
-or "DQ" in ASCII.
+or ``DQ'' in ASCII.
 
 *d_version*::
 The structure version, currently this is 1 (+XFS_DQUOT_VERSION+).

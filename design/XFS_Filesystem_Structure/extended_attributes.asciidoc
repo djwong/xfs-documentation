@@ -26,8 +26,8 @@ To view extended attributes from the command line, use the +getfattr+ command.
 To set or delete extended attributes, use the +setfattr+ command. ACLs control
 should use the +getfacl+ and +setfacl+ commands.
 
-XFS attributes supports three namespaces: "user", "trusted" (or "root" using
-IRIX terminology), and "secure".
+XFS attributes supports three namespaces: ``user'', ``trusted'' (or ``root'' using
+IRIX terminology), and ``secure''.
 
 See the section about xref:Extended_Attribute_Versions[extended attributes] in
 the inode for instructions on how to calculate the location of the attributes.
@@ -39,7 +39,7 @@ The following four sections describe each of the on-disk formats.
 == Short Form Attributes
 
 When the all extended attributes can fit within the inode's attribute fork, the
-inode's +di_aformat+ is set to "local" and the attributes are stored in the
+inode's +di_aformat+ is set to ``local'' and the attributes are stored in the
 inode's literal area starting at offset +di_forkoff × 8+.
 
 Shortform attributes use the following structures:
@@ -85,9 +85,9 @@ A combination of the following:
 [options="header"]
 |=====
 | Flag				| Description
-| 0                             | The attribute's namespace is "user".
-| +XFS_ATTR_ROOT+		| The attribute's namespace is "trusted".
-| +XFS_ATTR_SECURE+		| The attribute's namespace is "secure".
+| 0                             | The attribute's namespace is ``user''.
+| +XFS_ATTR_ROOT+		| The attribute's namespace is ``trusted''.
+| +XFS_ATTR_SECURE+		| The attribute's namespace is ``secure''.
 | +XFS_ATTR_INCOMPLETE+		| This attribute is being modified.
 | +XFS_ATTR_LOCAL+		| The attribute value is contained within this block.
 |=====
@@ -314,10 +314,10 @@ an inode before they are moved to another filesystem block.
 == Leaf Attributes
 
 When an inode's attribute fork space is used up with shortform attributes and
-more are added, the attribute format is migrated to "extents".
+more are added, the attribute format is migrated to ``extents''.
 
 Extent based attributes use hash/index pairs to speed up an attribute lookup.
-The first part of the "leaf" contains an array of fixed size hash/index pairs
+The first part of the ``leaf'' contains an array of fixed size hash/index pairs
 with the flags stored as well. The remaining part of the leaf block contains the
 array name/value pairs, where each element varies in length.
 
@@ -486,7 +486,7 @@ appropriate structure can be used.
 Since duplicate hash keys are possible, for each hash that matches during a
 lookup, the actual name string must be compared.
 
-An "incomplete" bit is also used for attribute flags. It shows that an attribute
+An ``incomplete'' bit is also used for attribute flags. It shows that an attribute
 is in the middle of being created and should not be shown to the user if we
 crash during the time that the bit is set. The bit is cleared when attribute
 has finished being set up. This is done because some large attributes cannot
@@ -635,7 +635,7 @@ image::images/72.png[]
 
 === xfs_db Node Attribute Example
 
-An inode with 1000 small attributes with the naming "attribute_n" where 'n' is a
+An inode with 1000 small attributes with the naming ``attribute_n'' where 'n' is a
 number:
 
 ----
@@ -677,7 +677,7 @@ The hashes are in ascending order in the btree array, and if the hash for the
 attribute we are looking up is before the entry, we go to the addressed
 attribute block.
 
-For example, to lookup attribute "attribute_267":
+For example, to lookup attribute ``attribute_267'':
 
 ----
 xfs_db> hash attribute_267
@@ -745,7 +745,7 @@ nvlist[84].value = "value_266\d"
 
 Each of the hash entries has +XFS_ATTR_LOCAL+ flag set (1), which means the
 attribute's value follows immediately after the name. Raw disk of the name/value
-pair at offset 2864 (0xb30), highlighted with "value_267\d" following
+pair at offset 2864 (0xb30), highlighted with ``value_267'' following
 immediately after the name:
 
 [subs="quotes"]
@@ -768,7 +768,7 @@ has 2 unused bytes after it.
 == B+tree Attributes
 
 When the attribute's extent map in an inode grows beyond the available space,
-the inode's attribute format is changed to a "btree". The inode contains root
+the inode's attribute format is changed to a ``btree''. The inode contains root
 node of the extent B+tree which then address the leaves that contains the extent
 arrays for the attribute data. The attribute data itself in the allocated
 filesystem blocks use the same layout and structures as described in
