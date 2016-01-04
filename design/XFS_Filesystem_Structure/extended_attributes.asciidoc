@@ -355,8 +355,8 @@ core.aformat = 2 (extents)
 ...
 a.bmx[0] = [startoff,startblock,blockcount,extentflag]
           0:[0,37535,9,0]
-xfs_db&gt; ablock 0
-xfs_db&gt; p
+xfs_db> ablock 0
+xfs_db> p
 hdr.info.forw = 0
 hdr.info.back = 0
 hdr.info.magic = 0xfbee
@@ -580,9 +580,9 @@ rightsib = 109968
 recs[1-127] = [startoff,startblock,blockcount,extentflag]
           1:[0,81870,1,0]
           ...
-xfs_db&gt; fsblock 109968
-xfs_db&gt; type bmapbtd
-xfs_db&gt; p
+xfs_db> fsblock 109968
+xfs_db> type bmapbtd
+xfs_db> p
 magic = 0x424d4150
 level = 0
 numrecs = 147
@@ -591,8 +591,8 @@ rightsib = null
 recs[1-147] = [startoff,startblock,blockcount,extentflag]
           ...
                              (which is fsblock 81870)
-xfs_db&gt; ablock 0
-xfs_db&gt; p
+xfs_db> ablock 0
+xfs_db> p
 hdr.info.forw = 0
 hdr.info.back = 0
 hdr.info.magic = 0xfebe

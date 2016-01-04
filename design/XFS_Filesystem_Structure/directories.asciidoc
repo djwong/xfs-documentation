@@ -321,8 +321,8 @@ blocksize = 4096
 ...
 dirblklog = 0
 ...
-xfs_db&gt; inode &lt;inode#&gt;
-xfs_db&gt; p
+xfs_db> inode <inode#>
+xfs_db> p
 core.magic = 0x494e
 core.mode = 040755
 core.version = 1
@@ -694,9 +694,9 @@ And the last data block:
 
 
 ----
-xfs_db&gt; dblock 2
-xfs_db&gt; type dir2
-xfs_db&gt; p
+xfs_db> dblock 2
+xfs_db> type dir2
+xfs_db> p
 dhdr.magic = 0x58443244
 dhdr.bestfree[0].offset = 0x70
 dhdr.bestfree[0].length = 0xf90
@@ -892,8 +892,8 @@ blocksize = 4096
 ...
 dirblklog = 2
 ...
-xfs_db&gt; inode &lt;inode#&gt;
-xfs_db&gt; p
+xfs_db> inode <inode#>
+xfs_db> p
 core.magic = 0x494e
 core.mode = 040755
 core.version = 1
@@ -1101,9 +1101,9 @@ u.bmbt.level = 1
 u.bmbt.numrecs = 1
 u.bmbt.keys[1] = [startoff] 1:[0]
 u.bmbt.ptrs[1] = 1:89
-xfs_db&gt; fsblock 89
-xfs_db&gt; type bmapbtd
-xfs_db&gt; p
+xfs_db> fsblock 89
+xfs_db> type bmapbtd
+xfs_db> p
 magic = 0x424d4150
 level = 0
 numrecs = 234
