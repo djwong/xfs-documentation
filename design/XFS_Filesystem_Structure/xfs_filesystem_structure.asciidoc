@@ -36,18 +36,28 @@ Global Structures
 =================
 
 :leveloffset: 1
+
 include::allocation_groups.asciidoc[]
+
 include::journaling_log.asciidoc[]
+
 include::internal_inodes.asciidoc[]
+
 :leveloffset: 0
 
 Dynamically Allocated Structures
 ================================
 
 :leveloffset: 1
+
 include::ondisk_inode.asciidoc[]
+
 include::data_extents.asciidoc[]
+
 include::extended_attributes.asciidoc[]
+
 include::directories.asciidoc[]
+
 include::symbolic_links.asciidoc[]
+
 :leveloffset: 0
