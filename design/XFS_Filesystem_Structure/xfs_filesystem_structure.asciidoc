@@ -50,6 +50,8 @@ include::metadata_integrity.asciidoc[]
 
 include::common_types.asciidoc[]
 
+include::magic.asciidoc[]
+
 // return titles to normal
 :leveloffset: 0
 
