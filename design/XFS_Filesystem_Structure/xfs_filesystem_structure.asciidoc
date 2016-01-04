@@ -6,13 +6,13 @@
 // and we really need an area to set up various docbook sections like copyright
 // and legal notice sections.
 //
-XFS Filesystem Structure
-========================
+XFS Filesystem Disk Structures
+==============================
 :doctype: book
 :docinfo1:
 
-Introduction
-============
+High Level Design
+=================
 
 [partintro]
 --
