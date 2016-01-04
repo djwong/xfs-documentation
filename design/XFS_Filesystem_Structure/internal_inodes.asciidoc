@@ -60,6 +60,11 @@ struct xfs_disk_dquot {
 struct xfs_dqblk {
      struct xfs_disk_dquot dd_diskdq;
      char                  dd_fill[32];
+
+     /* version 5 filesystem fields begin here */
+     __be32                dd_crc;
+     __be64                dd_lsn;
+     uuid_t                dd_uuid;
 };
 ----
 
@@ -149,6 +154,16 @@ Specifies the time when the ID's +d_rtbcount+ exceeded +d_rtb_softlimit+. The
 soft limit will turn into a hard limit after the elapsed time exceeds ID zero's
 +d_rtbtimer+ value. When +d_rtbcount+ goes back below +d_rtb_softlimit+,
 +d_rtbtimer+ is reset back to zero.
+
+*dd_uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*dd_lsn*::
+Log sequence number of the last DQ block write.
+
+*dd_crc*::
+Checksum of the DQ block.
 
 
 [[Real-time_Inodes]]

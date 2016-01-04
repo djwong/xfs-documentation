@@ -322,7 +322,8 @@ with the flags stored as well. The remaining part of the leaf block contains the
 array name/value pairs, where each element varies in length.
 
 Each leaf is based on the +xfs_da_blkinfo_t+ block header declared in the
-section about xref:Directory_Attribute_Block_Header[directories]. The structure
+section about xref:Directory_Attribute_Block_Header[directories].  On a v5
+filesystem, the block header is +xfs_da3_blkinfo_t+.  The structure
 encapsulating all other structures in the attribute block is
 +xfs_attr_leafblock_t+.
 
@@ -459,7 +460,32 @@ size of these entries is determined dynamically.
 A variable-length array of descriptors of remote attributes.  The location and
 size of these entries is determined dynamically.
 
-Each leaf header uses the magic number +XFS_ATTR_LEAF_MAGIC+ (0xfbee).
+On a v5 filesystem, the header becomes +xfs_da3_blkinfo_t+ to accomodate the
+extra metadata integrity fields:
+
+[source, c]
+----
+typedef struct xfs_attr3_leaf_hdr {
+     xfs_da3_blkinfo_t          info;
+     __be16                     count;
+     __be16                     usedbytes;
+     __be16                     firstused;
+     __u8                       holes;
+     __u8                       pad1;
+     xfs_attr_leaf_map_t        freemap[3];
+} xfs_attr3_leaf_hdr_t;
+
+
+typedef struct xfs_attr3_leafblock  {
+     xfs_attr3_leaf_hdr_t          hdr;
+     xfs_attr_leaf_entry_t         entries[1];
+     xfs_attr_leaf_name_local_t    namelist;
+     xfs_attr_leaf_name_remote_t   valuelist;
+} xfs_attr3_leafblock_t;
+----
+
+Each leaf header uses the magic number +XFS_ATTR_LEAF_MAGIC+ (0xfbee).  On a
+v5 filesystem, the magic number is +XFS_ATTR3_LEAF_MAGIC+ (0x3bee).
 
 The hash/index elements in the +entries[]+ array are packed from the top of the
 block. Name/values grow from the bottom but are not packed. The freemap contains
@@ -474,7 +500,8 @@ For attributes with small values (ie. the value can be stored within the leaf),
 the +XFS_ATTR_LOCAL+ flag is set for the attribute. The entry details are stored
 using the +xfs_attr_leaf_name_local_t+ structure. For large attribute values
 that cannot be stored within the leaf, separate filesystem blocks are allocated
-to store the value. They use the +xfs_attr_leaf_name_remote_t+ structure.
+to store the value. They use the +xfs_attr_leaf_name_remote_t+ structure.  See
+xref:Remote_Values[Remote Values] for more information.
 
 .Leaf attribute layout
 image::images/69.png[]
@@ -629,6 +656,7 @@ that exceeds the given hash.  The entry is in the block pointed to by the
 +before+ value. 
 
 Each attribute node block has a magic number of +XFS_DA_NODE_MAGIC+ (0xfebe).
+On a v5 filesystem this is +XFS_DA3_NODE_MAGIC+ (0x3ebe).
 
 .Node attribute layout
 image::images/72.png[]
@@ -834,3 +862,50 @@ is two levels deep. The two blocks at offset 513 and 512 (ie. access using the
 +ablock+ command) are intermediate +xfs_da_intnode_t+ nodes that index all the
 attribute leaves.
 
+[[Remote_Values]]
+== Remote Attribute Values
+
+On a v5 filesystem, all remote value blocks start with this header:
+
+[source, c]
+----
+struct xfs_attr3_rmt_hdr {
+	__be32	rm_magic;
+	__be32	rm_offset;
+	__be32	rm_bytes;
+	__be32	rm_crc;
+	uuid_t	rm_uuid;
+	__be64	rm_owner;
+	__be64	rm_blkno;
+	__be64	rm_lsn;
+};
+----
+
+
+*rm_magic*::
+Specifies the magic number for the remote value block: "XARM" (0x5841524d).
+
+*rm_offset*::
+Offset of the remote value data, in bytes.
+
+*rm_bytes*::
+Number of bytes used to contain the remote value data.
+
+*rm_crc*::
+Checksum of the remote value block.
+
+*rm_uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*rm_owner*::
+The inode number that this remote value block belongs to.
+
+*rm_blkno*::
+Disk block number of this remote value block.
+
+*rm_lsn*::
+Log sequence number of the last write to this block.
+
+Filesystems formatted prior to v5 do not have this header in the remote block.
+Value data begins immediately at offset zero.

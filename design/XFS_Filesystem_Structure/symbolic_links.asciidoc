@@ -63,6 +63,51 @@ by the data fork's +di_bmx[]+ array. In the significant majority of cases, this
 will be in one filesystem block as a symlink cannot be longer than 1024
 characters.
 
+On a v5 filesystem, the first block of each extent starts with the following
+header structure:
+
+[source, c]
+----
+struct xfs_dsymlink_hdr {
+     __be32                    sl_magic;
+     __be32                    sl_offset;
+     __be32                    sl_bytes;
+     __be32                    sl_crc;
+     uuid_t                    sl_uuid;
+     __be64                    sl_owner;
+     __be64                    sl_blkno;
+     __be64                    sl_lsn;
+};
+-----
+
+*sl_magic*::
+Specifies the magic number for the symlink block: "XSLM" (0x58534c4d).
+
+*sl_offset*::
+Offset of the symbolic link target data, in bytes.
+
+*sl_bytes*::
+Number of bytes used to contain the link target data.
+
+*sl_crc*::
+Checksum of the symlink block.
+
+*sl_uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*sl_owner*::
+The inode number that this symlink block belongs to.
+
+*sl_blkno*::
+Disk block number of this symlink.
+
+*sl_lsn*::
+Log sequence number of the last write to this block.
+
+Filesystems formatted prior to v5 do not have this header in the remote block.
+Symlink data begins immediately at offset zero.
+
 .Symbolic link extent layout
 image::images/62.png[]
 

@@ -40,8 +40,6 @@ superblock is one sector in length.
 The superblock is defined by the following structure. The description of each
 field follows.
 
-TODO: update for v5 formats.
-
 [source, c]
 ----
 struct xfs_sb
@@ -91,6 +89,20 @@ struct xfs_sb
 	__uint16_t		sb_logsectsize;
 	__uint32_t		sb_logsunit;
 	__uint32_t		sb_features2;
+	__uint32_t		sb_bad_features2;
+
+	/* version 5 superblock fields start here */
+	__uint32_t		sb_features_compat;
+	__uint32_t		sb_features_ro_compat;
+	__uint32_t		sb_features_incompat;
+	__uint32_t		sb_features_log_incompat;
+
+	__uint32_t		sb_crc;
+	xfs_extlen_t		sb_spino_align;
+
+	xfs_ino_t		sb_pquotino;
+	xfs_lsn_t		sb_lsn;
+	uuid_t			sb_meta_uuid;
 };
 ----
 *sb_magicnum*::
@@ -152,8 +164,8 @@ Number of blocks for the journaling log.
 Filesystem version number. This is a bitmask specifying the features enabled
 when creating the filesystem. Any disk checking tools or drivers that do not
 recognize any set bits must not operate upon the filesystem. Most of the flags
-indicate features introduced over time. If the value of the lower nibble is 4,
-the higher bits indicate feature flags as follows:
+indicate features introduced over time. If the value of the lower nibble is >=
+4, the higher bits indicate feature flags as follows:
 
 .Version 4 Superblock version flags
 [options="header"]
@@ -178,13 +190,17 @@ Version 2 directories are used. This is always set.
 Set if the sb_features2 field in the superblock contains more flags.
 |=====
 
+If the lower nibble of this value is 5, then this is a v5 filesystem; the
++XFS_SB_VERSION2_CRCBIT+ feature must be set in +sb_features2+.
+
 *sb_sectsize*::
 Specifies the underlying disk sector size in bytes.  Typically this is 512 or
 4096 bytes. This determines the minimum I/O alignment, especially for direct I/O.
 
 *sb_inodesize*::
 Size of the inode in bytes. The default is 256 (2 inodes per standard sector)
-but can be made as large as 2048 bytes when creating the filesystem.
+but can be made as large as 2048 bytes when creating the filesystem.  On a v5
+filesystem, the default and minimum inode size are both 512 bytes.
 
 *sb_inopblock*::
 Number of inodes per block. This is equivalent to +sb_blocksize / sb_inodesize+.
@@ -273,7 +289,11 @@ Miscellaneous flags.
 Reserved and must be zero (``vn'' stands for version number).
 
 *sb_inoalignmt*::
-Inode chunk alignment in fsblocks.
+Inode chunk alignment in fsblocks.  Prior to v5, the default value provided for
+inode chunks to have an 8KiB alignment.  Starting with v5, the default value
+scales with the multiple of the inode size over 256 bytes.  Concretely, this
+means an alignment of 16KiB for 512-byte inodes, 32KiB for 1024-byte inodes,
+etc.
 
 *sb_unit*::
 Underlying stripe or raid unit in blocks.
@@ -324,12 +344,81 @@ its parent inode. The primary purpose for this information is in backup systems.
 can be used to enforce disk space usage quotas for a particular group of
 directories.  This flag indicates that project IDs can be 32 bits in size.
 
+| +XFS_SB_VERSION2_CRCBIT+	|
+Metadata checksumming.  All metadata blocks have an extended header containing
+the block checksum, a copy of the metadata UUID, the log sequence number of the
+last update to prevent stale replays, and a back pointer to the owner of the
+block.  This feature must be and can only be set if the lowest nibble of
++sb_versionnum+ is set to 5.
+
 | +XFS_SB_VERSION2_FTYPE+	|
 Directory file type.  Each directory entry records the type of the inode to
 which the entry points.  This speeds up directory iteration by removing the
 need to load every inode into memory.
 |=====
 
+*sb_bad_features2*::
+This field mirrors +sb_features2+, due to past 64-bit alignment errors.
+
+*sb_features_compat*::
+Read-write compatible feature flags.  The kernel can still read and write this
+FS even if it doesn't understand the flag.  Currently, there are no valid
+flags.
+
+*sb_features_ro_compat*::
+Read-only compatible feature flags.  The kernel can still read this FS even if
+it doesn't understand the flag.
+
+.Extended Version 5 Superblock Read-Only compatibility flags
+[options="header"]
+|=====
+| Flag				| Description
+| +XFS_SB_FEAT_RO_COMPAT_FINOBT+ |
+Free inode B+tree.  Each allocation group contains a B+tree to track inode chunks
+containing free inodes.  This is a performance optimization to reduce the time
+required to allocate inodes.
+|=====
+
+*sb_features_incompat*::
+Read-write incompatible feature flags.  The kernel cannot read or write this
+FS if it doesn't understand the flag.
+
+.Extended Version 5 Superblock Read-Write incompatibility flags
+[options="header"]
+|=====
+| Flag				| Description
+| +XFS_SB_FEAT_INCOMPAT_FTYPE+ |
+Directory file type.  Each directory entry tracks the type of the inode to
+which the entry points.  This is a performance optimization to remove the need
+to load every inode into memory to iterate a directory.
+
+| +XFS_SB_FEAT_INCOMPAT_META_UUID+ |
+Metadata UUID.  The UUID stamped into each metadata block must match the value
+in +sb_meta_uuid+.  This enables the administrator to change +sb_uuid+ at will
+without having to rewrite the entire filesystem.
+|=====
+
+*sb_features_log_incompat*::
+Read-write incompatible feature flags for the log.  The kernel cannot read or
+write this FS log if it doesn't understand the flag.  Currently, no flags are
+defined.
+
+*sb_crc*::
+Superblock checksum.
+
+*sb_spino_align*::
+Sparse inode alignment.
+
+*sb_pquotino*::
+Project quota inode.
+
+*sb_lsn*::
+Log sequence number of the last superblock update.
+
+*sb_meta_uuid*::
+If the +XFS_SB_FEAT_INCOMPAT_META_UUID+ feature is set, then the UUID field in
+all metadata blocks must match this UUID.  If not, the block header UUID field
+must match +sb_uuid+.
 
 === xfs_db Superblock Example
 
@@ -405,7 +494,7 @@ features2 = 8
 
 The XFS filesystem tracks free space in an allocation group using two B+trees.
 One B+tree tracks space by block number, the second by the size of the free
-space block. This scheme allows XFS to quickly find free space near a given
+space block. This scheme allows XFS to find quickly free space near a given
 block or of a given size.
 
 All block numbers, indexes, and counts are AG relative.
@@ -434,6 +523,15 @@ struct xfs_agf {
      __be32              agf_freeblks;
      __be32              agf_longest;
      __be32              agf_btreeblks;
+
+     /* version 5 filesystem fields start here */
+     uuid_t              agf_uuid;
+     __be64              agf_spare64[16];
+
+     /* unlogged fields, written during buffer writeback. */
+     __be64              agf_lsn;
+     __be32              agf_crc;
+     __be32              agf_spare2;
 };
 ----
 
@@ -483,6 +581,22 @@ Specifies the number of blocks of longest contiguous free space in the AG.
 Specifies the number of blocks used for the free space B+trees. This is only
 used if the +XFS_SB_VERSION2_LAZYSBCOUNTBIT+ bit is set in +sb_features2+.
 
+*agf_uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*agf_spare64*::
+Empty space in the logged part of the AGF sector, for use for future features.
+
+*agf_lsn*::
+Log sequence number of the last AGF write.
+
+*agf_crc*::
+Checksum of the AGF sector.
+
+*agf_spare2*::
+Empty space in the unlogged part of the AGF sector.
+
 [[Short_Format_Btrees]]
 === Short Format B+trees
 
@@ -499,6 +613,13 @@ struct xfs_btree_sblock {
      __be16                    bb_numrecs;
      __be32                    bb_leftsib;
      __be32                    bb_rightsib;
+
+     /* version 5 filesystem fields start here */
+     __be64                    bb_blkno;
+     __be64                    bb_lsn;
+     uuid_t                    bb_uuid;
+     __be32                    bb_owner;
+     __le32                    bb_crc;
 };
 ----
 
@@ -518,6 +639,22 @@ AG block number of the left sibling of this B+tree node.
 
 *bb_rightsib*::
 AG block number of the right sibling of this B+tree node.
+
+*bb_blkno*::
+FS block number of this B+tree block.
+
+*bb_lsn*::
+Log sequence number of the last write to this block.
+
+*bb_uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*bb_owner*::
+The AG number that this B+tree block ought to be in.
+
+*bb_crc*::
+Checksum of the B+tree block.
 
 [[AG_Free_Space_Btrees]]
 === AG Free Space B+trees
@@ -553,7 +690,9 @@ typedef __be32 xfs_alloc_ptr_t;
 * As the free space tracking is AG relative, all the block numbers are only
 32-bits.
 * The +bb_magic+ value depends on the B+tree: ``ABTB'' (0x41425442) for the block
-offset B+tree, ``ABTC'' (0x41425443) for the block count B+tree.
+offset B+tree, ``ABTC'' (0x41425443) for the block count B+tree.  On a v5
+filesystem, these are ``AB3B'' (0x41423342) and ``AB3C'' (0x41423343),
+respectively.
 * The +xfs_btree_sblock_t+ header is used for intermediate B+tree node as well
 as the leaves.
 * For a typical 4KB filesystem block size, the offset for the +xfs_alloc_ptr_t+
@@ -594,6 +733,38 @@ relative block pointer). The actual size can be determined by using the
 Active elements in the array are specified by the
 xref:AG_Free_Space_Block[AGF's] +agf_flfirst+, +agf_fllast+ and +agf_flcount+
 values. The array is managed as a circular list.
+
+On a v5 filesystem, the following header precedes the free list entries:
+
+[source, c]
+----
+struct xfs_agfl {
+     __be32              agfl_magicnum;
+     __be32              agfl_seqno;
+     uuid_t              agfl_uuid;
+     __be64              agfl_lsn;
+     __be32              agfl_crc;
+};
+----
+
+*agfl_magicnum*::
+Specifies the magic number for the AGFL sector: "XAFL" (0x5841464c).
+
+*agfl_seqno*::
+Specifies the AG number for the sector.
+
+*agfl_uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*agfl_lsn*::
+Log sequence number of the last AGFL write.
+
+*agfl_crc*::
+Checksum of the AGFL sector.
+
+On a v4 filesystem there is no header; the array of free block numbers begins
+at the beginning of the sector.
 
 .AG Free List layout
 image::images/16.png[]
@@ -739,6 +910,18 @@ struct xfs_agi {
      __be32              agi_newino;
      __be32              agi_dirino;
      __be32              agi_unlinked[64];
+
+     /*
+      * v5 filesystem fields start here; this marks the end of logging region 1
+      * and start of logging region 2.
+      */
+     uuid_t              agi_uuid;
+     __be32              agi_crc;
+     __be32              agi_pad32;
+     __be64              agi_lsn;
+
+     __be32              agi_free_root;
+     __be32              agi_free_level;
 }
 ----
 *agi_magicnum*::
@@ -775,19 +958,45 @@ Deprecated and not used, this is always set to NULL (-1).
 Hash table of unlinked (deleted) inodes that are still being referenced. Refer
 to xref:Unlinked_Pointer[unlinked list pointers] for more information.
 
+*agi_uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*agi_crc*::
+Checksum of the AGI sector.
+
+*agi_pad32*::
+Padding field, otherwise unused.
+
+*agi_lsn*::
+Log sequence number of the last write to this block.
+
+*agi_free_root*::
+Specifies the block number in the AG containing the root of the free inode
+B+tree.
+
+*agi_free_level*::
+Specifies the number of levels in the free inode B+tree.
 
 [[Inode_Btrees]]
 == Inode B+trees
 
 Inodes are allocated in chunks of 64, and a B+tree is used to track these chunks
 of inodes as they are allocated and freed. The block containing root of the
-B+tree is defined by the AGI's +agi_root+ value.
+B+tree is defined by the AGI's +agi_root+ value.  If the
++XFS_SB_FEAT_RO_COMPAT_FINOBT+ feature is enabled, a second B+tree is used to
+track the chunks containing free inodes; this is an optimization to speed up
+inode allocation.
 
 The B+tree header for the nodes and leaves use the +xfs_btree_sblock+ structure
 which is the same as the header used in the xref:AG_Free_Space_Btrees[AGF
 B+trees].
 
-The magic number of the inode B+tree is ``IABT'' (0x49414254).
+The magic number of the inode B+tree is ``IABT'' (0x49414254).  On a v5
+filesystem, the magic number is ``IAB3'' (0x49414233).
+
+The magic number of the free inode B+tree is ``FIBT'' (0x46494254).  On a v5
+filesystem, the magic number is ``FIB3'' (0x46494254).
 
 Leaves contain an array of the following structure:
 

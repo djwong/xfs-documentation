@@ -358,7 +358,7 @@ typedef struct xfs_dir2_block {
 ----
 
 *hdr*::
-Directory block header.
+Directory block header.  On a v5 filesystem this is +xfs_dir3_data_hdr_t+.
 
 *u*::
 Union of directory and unused entries.
@@ -383,8 +383,62 @@ Magic number for this directory block.
 *bestfree*::
 An array pointing to free regions in the directory block.
 
+On a v5 filesystem, directory and attribute blocks are formatted with v3
+headers, which contain extra data:
+
 [source, c]
 ----
+struct xfs_dir3_blk_hdr {
+     __be32                     magic;
+     __be32                     crc;
+     __be64                     blkno;
+     __be64                     lsn;
+     uuid_t                     uuid;
+     __be64                     owner;
+};
+----
+
+*magic*::
+Magic number for this directory block.
+
+*crc*::
+Checksum of the directory block.
+
+*blkno*::
+Block number of this directory block.
+
+*lsn*::
+Log sequence number of the last write to this block.
+
+*uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*owner*::
+The inode number that this directory block belongs to.
+
+[source, c]
+----
+struct xfs_dir3_data_hdr {
+     struct xfs_dir3_blk_hdr    hdr;
+     xfs_dir2_data_free_t       best_free[XFS_DIR2_DATA_FD_COUNT];
+     __be32                     pad;
+};
+----
+
+*hdr*::
+The v5 directory/attribute block header.
+
+*best_free*::
+An array pointing to free regions in the directory block.
+
+*pad*::
+Padding to maintain a 64-bit alignment.
+
+Within the block, data structures are as follows:
+
+[source, c]
+-----
 typedef struct xfs_dir2_data_free {
      xfs_dir2_data_off_t        offset;
      xfs_dir2_data_off_t        length;
@@ -494,7 +548,8 @@ Following is a diagram of how these pieces fit together for a block directory.
 .Block directory layout
 image::images/43.png[]
 
-* The magic number in the header is ``XD2B'' (0x58443242).
+* The magic number in the header is ``XD2B'' (0x58443242), or ``XDB3'' (0x58444233)
+on a v5 filesystem.
 
 * The +tag+ in the +xfs_dir2_data_entry_t+ structure stores its offset from the
 start of the block.
@@ -736,7 +791,7 @@ Currently, this is 32GB and in the extent view, a block offset of
 decimal).
 
 * Blocks with directory entries (``data'' extents) have the magic number ``X2D2''
-(0x58443244).
+(0x58443244), or ``XDD3'' (0x58444433) on a v5 filesystem.
 
 * The ``data'' extents have a new header (no ``leaf'' data):
 
@@ -749,7 +804,7 @@ typedef struct xfs_dir2_data {
 ----
 
 *hdr*::
-Data block header.
+Data block header.  On a v5 filesystem, this field is +struct xfs_dir3_data_hdr+.
 
 *u*::
 Union of directory and unused entries, exactly the same as in a block directory.
@@ -769,7 +824,8 @@ typedef struct xfs_dir2_leaf {
 ----
 
 *hdr*::
-Directory leaf header.
+Directory leaf header.  On a v5 filesystem this is +struct
+xfs_dir3_leaf_hdr_t+.
 
 *ents*::
 Hash values of the entries in this block.
@@ -797,6 +853,28 @@ Number of leaf entries.
 
 *stale*::
 Number of stale/zeroed leaf entries.
+
+[source, c]
+----
+struct xfs_dir3_leaf_hdr {
+     struct xfs_da3_blkinfo    info;
+     __uint16_t                count;
+     __uint16_t                stale;
+     __be32                    pad;
+};
+----
+
+*info*::
+Leaf B+tree block header.
+
+*count*::
+Number of leaf entries.
+
+*stale*::
+Number of stale/zeroed leaf entries.
+
+*pad*::
+Padding to maintain alignment rules.
 
 [source, c]
 ----
@@ -839,7 +917,58 @@ Padding to maintain alignment.
 
 // split lists
 
-* The magic number of the leaf block is +XFS_DIR2_LEAF1_MAGIC+ (0xd2f1).
+* On a v5 filesystem, the leaves use the +struct xfs_da3_blkinfo_t+ filesystem
+block header. This header is used in the same place as +xfs_da_blkinfo_t+:
+
+[source, c]
+----
+struct xfs_da3_blkinfo {
+     /* these values are inside xfs_da_blkinfo */
+     __be32                     forw;
+     __be32                     back;
+     __be16                     magic;
+     __be16                     pad;
+
+     __be32                     crc;
+     __be64                     blkno;
+     __be64                     lsn;
+     uuid_t                     uuid;
+     __be64                     owner;
+};
+----
+
+*forw*::
+Logical block offset of the previous B+tree block at this level.
+
+*back*::
+Logical block offset of the next B+tree block at this level.
+
+*magic*::
+Magic number for this directory/attribute block.
+
+*pad*::
+Padding to maintain alignment.
+
+*crc*::
+Checksum of the directory/attribute block.
+
+*blkno*::
+Block number of this directory/attribute block.
+
+*lsn*::
+Log sequence number of the last write to this block.
+
+*uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*owner*::
+The inode number that this directory/attribute block belongs to.
+
+// split lists
+
+* The magic number of the leaf block is +XFS_DIR2_LEAF1_MAGIC+ (0xd2f1); on a
+v5 filesystem it is +XFS_DIR3_LEAF1_MAGIC+ (0x3df1).
 
 * The size of the +ents+ array is specified by +hdr.count+.
 
@@ -1107,13 +1236,15 @@ each ``data'' block. This is not possible with more than one leaf.
 
 * After the ``freeindex'' data moves to its own block, it is possible for the
 leaf data to fit within a single leaf block.  This single leaf block has a
-magic number of +XFS_DIR2_LEAFN_MAGIC+ (0xd2ff).
+magic number of +XFS_DIR2_LEAFN_MAGIC+ (0xd2ff) or on a v5 filesystem,
++XFS_DIR3_LEAFN_MAGIC+ (0x3dff).
 
 * The ``leaf'' blocks eventually change into a B+tree with the generic B+tree
 header pointing to directory ``leaves'' as described in
 xref:Leaf_Directories[Leaf Directories]. Blocks with leaf data still have the
 +LEAFN_MAGIC+ magic number as outlined above.  The top-level tree blocks are
-called ``nodes'' and have a magic number of +XFS_DA_NODE_MAGIC+ (0xfebe).
+called ``nodes'' and have a magic number of +XFS_DA_NODE_MAGIC+ (0xfebe), or on
+a v5 filesystem, +XFS_DA3_NODE_MAGIC+ (0x3ebe).
 
 * Distinguishing between a combined leaf/freeindex block (+LEAF1_MAGIC+), a
 leaf-only block (+LEAFN_MAGIC+), and a btree node block (+NODE_MAGIC+) can only
@@ -1161,6 +1292,50 @@ An array specifying the best free counts in each directory data block.
 
 // split lists
 
+* On a v5 filesystem, the freeindex block uses the following structures:
+
+[source, c]
+----
+struct xfs_dir3_free_hdr {
+     struct xfs_dir3_blk_hdr   hdr;
+     __int32_t                 firstdb;
+     __int32_t                 nvalid;
+     __int32_t                 nused;
+     __int32_t                 pad;
+};
+----
+
+*hdr*::
+v3 directory block header.  The magic number is "XDF3" (0x0x58444633).
+
+*firstdb*::
+The starting directory block number for the bests array.
+
+*nvalid*::
+Number of elements in the bests array.
+
+*nused*::
+Number of valid elements in the bests array.
+
+*pad*::
+Padding to maintain alignment.
+
+[source, c]
+----
+struct xfs_dir3_free {
+     xfs_dir3_free_hdr_t       hdr;
+     __be16                    bests[1];
+};
+----
+
+*hdr*::
+Free block header.
+
+*bests*::
+An array specifying the best free counts in each directory data block.
+
+// split lists
+
 * The location of the leaf blocks can be in any order, the only way to determine
 the appropriate is by the node block hash/before values. Given a hash to look up,
 you read the node's +btree+ array and first +hashval+ in the array that exceeds
@@ -1197,6 +1372,45 @@ Number of node entries in this block.
 
 *level*::
 The level of this block in the B+tree.
+
+*hashval*::
+The hash value of a particular record.
+
+*before*::
+The directory/attribute logical block containing all entries up to the
+corresponding hash value.
+
+* On a v5 filesystem, the directory/attribute node blocks have the following
+structure:
+
+[source, c]
+----
+struct xfs_da3_intnode {
+     struct xfs_da3_node_hdr {
+           struct xfs_da3_blkinfo    info;
+           __uint16_t                count;
+           __uint16_t                level;
+           __uint32_t                pad32;
+     } hdr;
+     struct xfs_da_node_entry {
+           xfs_dahash_t              hashval;
+           xfs_dablk_t               before;
+     } btree[1];
+};
+----
+
+*info*::
+Directory/attribute block info.  The magic number is +XFS_DA3_NODE_MAGIC+
+(0x3ebe).
+
+*count*::
+Number of node entries in this block.
+
+*level*::
+The level of this block in the B+tree.
+
+*pad32*::
+Padding to maintain alignment.
 
 *hashval*::
 The hash value of a particular record.

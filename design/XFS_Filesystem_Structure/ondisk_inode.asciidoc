@@ -55,7 +55,7 @@ explain the various structures in use within the inode.
 
 The remaining space in the inode after +di_next_unlinked+ where the two forks
 are located is called the inode's ``literal area''. This starts at offset 100
-(0x64) in the inode.
+(0x64) in a version 1 or 2 inode, and offset 176 (0xb0) in a version 3 inode.
 
 The space for each of the two forks in the literal area is determined by the
 inode size, and +di_core.di_forkoff+. The data fork is located between the start
@@ -99,6 +99,20 @@ struct xfs_dinode_core {
      __uint16_t                di_dmstate;
      __uint16_t                di_flags;
      __uint32_t                di_gen;
+
+     /* di_next_unlinked is the only non-core field in the old dinode */
+     __be32                    di_next_unlinked;
+
+     /* version 5 filesystem (inode version 3) fields start here */
+     __le32                    di_crc;
+     __be64                    di_changecount;
+     __be64                    di_lsn;
+     __be64                    di_flags2;
+     __u8                      di_pad2[16];
+     xfs_timestamp_t           di_crtime;
+     __be64                    di_ino;
+     uuid_t                    di_uuid;
+
 };
 ----
 
@@ -110,10 +124,11 @@ Specifies the mode access bits and type of file using the standard S_Ixxx values
 defined in stat.h.
 
 *di_version*::
-Specifies the inode version which currently can only be 1 or 2. The inode
+Specifies the inode version which currently can only be 1, 2, or 3. The inode
 version specifies the usage of the +di_onlink+, +di_nlink+ and +di_projid+
 values in the inode core. Initially, inodes are created as v1 but can be
-converted on the fly to v2 when required.
+converted on the fly to v2 when required.  v3 inodes are created only for v5
+filesystems.
 
 *di_format*::
 Specifies the format of the data fork in conjunction with the +di_mode+ type.
@@ -284,6 +299,35 @@ A generation number used for inode identification. This is used by tools that do
 inode scanning such as backup tools and xfsdump. An inode's generation number
 can change by unlinking and creating a new file that reuses the inode.  
 
+*di_next_unlinked*::
+See the section on xref:Unlinked_Pointer[unlinked inode pointers] for more
+information.
+
+*di_crc*::
+Checksum of the inode.
+
+*di_changecount*::
+Counts the number of changes made to the attributes in this inode.
+
+*di_lsn*::
+Log sequence number of the last inode write.
+
+*di_flags2*::
+Specifies extended flags associated with a v3 inode.  There are no flags defined
+currently.
+
+*di_pad2*::
+Padding for future expansion of the inode.
+
+*di_crtime*::
+Specifies the time when this inode was created.
+
+*di_ino*::
+The full inode number of this inode.
+
+*di_uuid*::
+The UUID of this inode, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
 
 [[Unlinked_Pointer]]
 == Unlinked Pointer
@@ -311,12 +355,12 @@ image::images/28.png[]
 == Data Fork
 
 The structure of the inode's data fork based is on the inode's type and
-+di_format+. It always starts at offset 100 (0x64) in the inode's space which is
-the start of the inode's ``literal area''. The size of the data fork is determined
-by the type and format. The maximum size is determined by the inode size and
-+di_forkoff+. In code, use the +XFS_DFORK_PTR+ macro specifying +XFS_DATA_FORK+
-for the ``which'' parameter. Alternatively, the +XFS_DFORK_DPTR+ macro can be
-used.
++di_format+. The data fork begins at the start of the inode's ``literal area''.
+This area starts at offset 100 (0x64), or offset 176 (0xb0) in a v3 inode. The
+size of the data fork is determined by the type and format. The maximum size is
+determined by the inode size and +di_forkoff+. In code, use the +XFS_DFORK_PTR+
+macro specifying +XFS_DATA_FORK+ for the ``which'' parameter. Alternatively,
+the +XFS_DFORK_DPTR+ macro can be used.
 
 Each of the following sub-sections summarises the contents of the data fork
 based on the inode type.

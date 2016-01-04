@@ -90,4 +90,20 @@
 			</simplelist>
 		</revdescription>
 	</revision>
+	<revision>
+		<revnumber>3.1</revnumber>
+		<date>October 2015</date>
+		<author>
+			<firstname>Darrick</firstname>
+			<surname>Wong</surname>
+			<email></email>
+		</author>
+		<revdescription>
+			<simplelist>
+				<member>Add v5 fields.</member>
+				<member>Discuss metadata integrity.</member>
+				<member>Document the free inode B+tree.</member>
+			</simplelist>
+		</revdescription>
+	</revision>
 </revhistory>
