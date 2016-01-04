@@ -101,20 +101,20 @@ struct xfs_dinode_core {
 };
 ----
 
-.di_magic
+*di_magic*::
 The inode signature where these two bytes are 0x494e, or "IN" in ASCII.
 
-.di_mode
+*di_mode*::
 Specifies the mode access bits and type of file using the standard S_Ixxx values
 defined in stat.h.
 
-.di_version
+*di_version*::
 Specifies the inode version which currently can only be 1 or 2. The inode
 version specifies the usage of the +di_onlink+, +di_nlink+ and +di_projid+
 values in the inode core. Initially, inodes are created as v1 but can be
 converted on the fly to v2 when required.
 
-.di_format
+*di_format*::
 
 Specifies the format of the data fork in conjunction with the +di_mode+ type.
 This can be one of several values. For directories and links, it can be "local"
@@ -137,34 +137,34 @@ typedef enum xfs_dinode_fmt {
 } xfs_dinode_fmt_t;
 ----
 
-.di_onlink
+*di_onlink*::
 In v1 inodes, this specifies the number of links to the inode from directories.
 When the number exceeds 65535, the inode is converted to v2 and the link count
 is stored in +di_nlink+.
 
-.di_uid
+*di_uid*::
 Specifies the owner's UID of the inode. 
 
-.di_gid
+*di_gid*::
 Specifies the owner's GID of the inode.
 
-.di_nlink
+*di_nlink*::
 Specifies the number of links to the inode from directories. This is maintained
 for both inode versions for current versions of XFS. Old versions of XFS did not
 support v2 inodes, and therefore this value was never updated and was classed as
 reserved space (part of +di_pad+).
 
-.di_projid
+*di_projid*::
 Specifies the owner's project ID in v2 inodes. An inode is converted to v2 if
 the project ID is set. This value must be zero for v1 inodes.
 
-.di_pad[8]
+*di_pad[8]*::
 Reserved, must be zero.
 
-.di_flushiter
+*di_flushiter*::
 Incremented on flush.
 
-.di_atime
+*di_atime*::
 
 Specifies the last access time of the files using UNIX time conventions the
 following structure. This value maybe undefined if the filesystem is mounted
@@ -178,24 +178,24 @@ struct xfs_timestamp {
 };
 ----
 
-.di_mtime
+*di_mtime*::
 Specifies the last time the file was modified.
 
-.di_ctime
+*di_ctime*::
 Specifies when the inode's status was last changed.
 
-.di_size
+*di_size*::
 Specifies the EOF of the inode in bytes. This can be larger or smaller than the
 extent space (therefore actual disk space) used for the inode. For regular
 files, this is the filesize in bytes, directories, the space taken by directory
 entries and for links, the length of the symlink.
 
-.di_nblocks
+*di_nblocks*::
 Specifies the number of filesystem blocks used to store the inode's data
 including relevant metadata like B+trees. This does not include blocks used for
 extended attributes.
 
-.di_extsize
+*di_extsize*::
 Specifies the extent size for filesystems with real-time devices and an extent
 size hint for standard filesystems. For normal filesystems, and with
 directories, the +XFS_DIFLAG_EXTSZINHERIT+ flag must be set in +di_flags+ if
@@ -204,13 +204,13 @@ di_extsize value and have +XFS_DIFLAG_EXTSIZE+ set in their +di_flags+. When a
 file is written to beyond allocated space, XFS will attempt to allocate
 additional disk space based on this value.
 
-.di_nextents
+*di_nextents*::
 Specifies the number of data extents associated with this inode.
 
-.di_anextents
+*di_anextents*::
 Specifies the number of extended attribute extents associated with this inode.
 
-.di_forkoff
+*di_forkoff*::
 Specifies the offset into the inode's literal area where the extended attribute
 fork starts. This is an 8-bit value that is multiplied by 8 to determine the
 actual offset in bytes (ie. attribute data is 64-bit aligned). This also limits
@@ -220,19 +220,19 @@ an extended attribute is created. When in attribute is added, the nature of
 Refer to xref:Extended_Attribute_Versions[Extended Attribute Versions] for more
 details.
 
-.di_aformat
+*di_aformat*::
 
 Specifies the format of the attribute fork. This uses the same values as
 +di_format+, but restricted to "local", "extents" and "btree" formats for
 extended attribute data.
 
-.di_dmevmask
+*di_dmevmask*::
 DMAPI event mask.
 
-.di_dmstate
+*di_dmstate*::
 DMAPI state.
 
-.di_flags
+*di_flags*::
 Specifies flags associated with the inode. This can be a combination of the
 following values:
 
@@ -271,7 +271,7 @@ Specifies the inode is to be ignored when defragmenting the filesystem.
 
 |=====
 
-.di_gen
+*di_gen*::
 A generation number used for inode identification. This is used by tools that do
 inode scanning such as backup tools and xfsdump. An inode's generation number
 can change by unlinking and creating a new file that reuses the inode.  

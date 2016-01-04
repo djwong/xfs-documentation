@@ -92,59 +92,59 @@ struct xfs_sb
 	__uint32_t		sb_features2;
 };
 ----
-.sb_magicnum
+*sb_magicnum*::
 Identifies the filesystem. It's value is +XFS_SB_MAGIC = 0x58465342 "XFSB"+.
 
-.sb_blocksize
+*sb_blocksize*::
 The size of a basic unit of space allocation in bytes. Typically, this is 4096
 (4KB) but can range from 512 to 65536 bytes.
 
-.sb_dblocks
+*sb_dblocks*::
 Total number of blocks available for data and metadata on the filesystem.
 
-.sb_rblocks
+*sb_rblocks*::
 Number blocks in the real-time disk device. Refer to
 xref:Real-time_Devices[real-time sub-volumes] for more information.
 
-.sb_rextents
+*sb_rextents*::
 Number of extents on the real-time device.
 
-.sb_uuid
+*sb_uuid*::
 UUID (Universally Unique ID) for the filesystem. Filesystems can be mounted by
 the UUID instead of device name.
 
-.sb_logstart
+*sb_logstart*::
 First block number for the journaling log if the log is internal (ie. not on a
 separate disk device). For an external log device, this will be zero (the log
 will also start on the first block on the log device).
 
-.sb_rootino
+*sb_rootino*::
 Root inode number for the filesystem. Typically, this is 128 when using a
 4KB block size.
 
-.sb_rbmino
+*sb_rbmino*::
 Bitmap inode for real-time extents.
 
-.sb_rsumino
+*sb_rsumino*::
 Summary inode for real-time bitmap.
 
-.sb_rextsize
+*sb_rextsize*::
 Realtime extent size in blocks.
 
-.sb_agblocks
+*sb_agblocks*::
 Size of each AG in blocks. For the actual size of the last AG, refer to the
 xref:AG_Free_Space_Management[free space] +agf_length+ value.
 
-.sb_agcount
+*sb_agcount*::
 Number of AGs in the filesystem.
 
-.sb_rbmblocks
+*sb_rbmblocks*::
 Number of real-time bitmap blocks.
 
-.sb_logblocks
+*sb_logblocks*::
 Number of blocks for the journaling log.
 
-.sb_versionnum
+*sb_versionnum*::
 Filesystem version number. This is a bitmask specifying the features enabled
 when creating the filesystem. Any disk checking tools or drivers that do not
 recognize any set bits must not operate upon the filesystem. Most of the flagsi
@@ -174,72 +174,72 @@ Version 2 directories are used. This is always set.
 Set if the sb_features2 field in the superblock contains more flags.
 |=====
 
-.sb_sectsize
+*sb_sectsize*::
 Specifies the underlying disk sector size in bytes. Majority of the time, this
 is 512 bytes. This determines the minimum I/O alignment including Direct I/O.
 
-.sb_inodesize
+*sb_inodesize*::
 Size of the inode in bytes. The default is 256 (2 inodes per standard sector)
 but can be made as large as 2048 bytes when creating the filesystem.
 
-.sb_inopblock
+*sb_inopblock*::
 Number of inodes per block. This is equivalent to +sb_blocksize / sb_inodesize+.
 
-.sb_fname[12]
+*sb_fname[12]*::
 Name for the filesystem. This value can be used in the mount command.
 
-.sb_blocklog
+*sb_blocklog*::
 log~2~ value of +sb_blocksize+. In other terms, +sb_blocksize = 2^sb_blocklog^+.
 
-.sb_sectlog
+*sb_sectlog*::
 log~2~ value of +sb_sectsize+.
 
-.sb_inodelog
+*sb_inodelog*::
 log~2~ value of +sb_inodesize+.
 
-.sb_inopblog
+*sb_inopblog*::
 log~2~ value of +sb_inopblock+.
 
-.sb_agblklog
+*sb_agblklog*::
 log~2~ value of +sb_agblocks+ (rounded up). This value is used to generate inode
 numbers and absolute block numbers defined in extent maps.
 
-.sb_rextslog
+*sb_rextslog*::
 log~2~ value of +sb_rextents+.
 
-.sb_inprogress
+*sb_inprogress*::
 Flag specifying that the filesystem is being created.
 
-.sb_imax_pct
+*sb_imax_pct*::
 Maximum percentage of filesystem space that can be used for inodes. The default
 value is 5%.
 
-.sb_icount
+*sb_icount*::
 Global count for number inodes allocated on the filesystem. This is only
 maintained in the first superblock.
 
-.sb_ifree
+*sb_ifree*::
 Global count of free inodes on the filesystem. This is only maintained in the
 first superblock.
 
-.sb_fdblocks
+*sb_fdblocks*::
 Global count of free data blocks on the filesystem. This is only maintained in
 the first superblock.
 
-.sb_frextents
+*sb_frextents*::
 Global count of free real-time extents on the filesystem. This is only
 maintained in the first superblock.
 
-.sb_uquotino
+*sb_uquotino*::
 Inode for user quotas. This and the following two quota fields only apply if
 +XFS_SB_VERSION_QUOTABIT+ flag is set in +sb_versionnum+. Refer to
 xref:Quota_Inodes[quota inodes] for more information
 
-.sb_gquotino
+*sb_gquotino*::
 Inode for group or project quotas. Group and Project quotas cannot be used at
 the same time.
 
-.sb_qflags
+*sb_qflags*::
 Quota flags. It can be a combination of the following flags:
 
 .Superblock quota flags
@@ -255,37 +255,37 @@ Quota flags. It can be a combination of the following flags:
 | +XFS_GQUOTA_ACCT+		| Group quota accounting is enabled.
 |=====
 
-.sb_flags
+*sb_flags*::
 Miscellaneous flags.
 
-.sb_shared_vn
+*sb_shared_vn*::
 Reserved and must be zero ("vn" stands for version number).
 
-.sb_inoalignmt
+*sb_inoalignmt*::
 Inode chunk alignment in fsblocks.
 
-.sb_unit
+*sb_unit*::
 Underlying stripe or raid unit in blocks.
 
-.sb_width
+*sb_width*::
 Underlying stripe or raid width in blocks.
 
-.sb_dirblklog
+*sb_dirblklog*::
 log~2~ multiplier that determines the granularity of directory block allocations
 in fsblocks.
 
-.sb_logsectlog
+*sb_logsectlog*::
 log~2~ value of the log subvolume's sector size. This is only used if the
 journaling log is on a separate disk device (i.e. not internal).
 
-.sb_logsectsize
+*sb_logsectsize*::
 The log's sector size in bytes if the filesystem uses an external log device.
 
-.sb_logsunit
+*sb_logsunit*::
 The log device's stripe or raid unit size. This only applies to version 2 logs
 +XFS_SB_VERSION_LOGV2BIT+ is set in +sb_versionnum+.
 
-.sb_features2
+*sb_features2*::
 Additional version flags if +XFS_SB_VERSION_MOREBITSBIT+ is set in
 +sb_versionnum+. The currently defined additional features include:
 
@@ -417,45 +417,45 @@ struct xfs_agf {
 The rest of the bytes in the sector are zeroed. +XFS_BTNUM_AGF+ is set to 2,
 index 0 for the count B+tree and index 1 for the size B+tree.
 
-.agf_magicnum
+*agf_magicnum*::
 Specifies the magic number for the AGF sector: "XAGF" (0x58414746).
 
-.agf_versionnum
+*agf_versionnum*::
 Set to +XFS_AGF_VERSION+ which is currently 1.
 
-.agf_seqno
+*agf_seqno*::
 Specifies the AG number for the sector.
 
-.agf_length
+*agf_length*::
 Specifies the size of the AG in filesystem blocks. For all AGs except the last,
 This must be equal to the superblock's +sb_agblocks+ value. For the last AG,
 this could be less than the +sb_agblocks+ value. It is this value that should
 be used to determine the size of the AG.
 
-.agf_roots
+*agf_roots*::
 Specifies the block number for the root of the two free space B+trees.
 
-.agf_levels
+*agf_levels*::
 Specifies the level or depth of the two free space B+trees. For a fresh AG, this
 will be one, and the "roots" will point to a single leaf of level 0.
 
-.agf_flfirst
+*agf_flfirst*::
 Specifies the index of the first "free list" block. Free lists are covered in
 more detail later on.
 
-.agf_fllast
+*agf_fllast*::
 Specifies the index of the last "free list" block.
 
-.agf_flcount
+*agf_flcount*::
 Specifies the number of blocks in the "free list".
 
-.agf_freeblks
+*agf_freeblks*::
 Specifies the current number of free blocks in the AG.
 
-.agf_longest
+*agf_longest*::
 Specifies the number of blocks of longest contiguous free space in the AG.
 
-.agf_btreeblks
+*agf_btreeblks*::
 Specifies the number of blocks used for the free space B+trees. This is only
 used if the +XFS_SB_VERSION2_LAZYSBCOUNTBIT+ bit is set in +sb_features2+.
 
@@ -688,37 +688,37 @@ struct xfs_agi {
      __be32              agi_unlinked[64];
 }
 ----
-.agi_magicnum
+*agi_magicnum*::
 Specifies the magic number for the AGI sector: "XAGI" (0x58414749).
 
-.agi_versionnum
+*agi_versionnum*::
 Set to +XFS_AGI_VERSION+ which is currently 1.
 
-.agi_seqno
+*agi_seqno*::
 Specifies the AG number for the sector.
 
-.agi_length
+*agi_length*::
 Specifies the size of the AG in filesystem blocks.
 
-.agi_count
+*agi_count*::
 Specifies the number of inodes allocated for the AG.
 
-.agi_root
+*agi_root*::
 Specifies the block number in the AG containing the root of the inode B+tree.
 
-.agi_level
+*agi_level*::
 Specifies the number of levels in the inode B+tree.
 
-.agi_freecount
+*agi_freecount*::
 Specifies the number of free inodes in the AG.
 
-.agi_newino
+*agi_newino*::
 Specifies AG relative inode number most recently allocated.
 
-.agi_dirino
+*agi_dirino*::
 Deprecated and not used, it's always set to NULL (-1).
 
-.agi_unlinked[64]
+*agi_unlinked[64]*::
 Hash table of unlinked (deleted) inodes that are still being referenced. Refer
 to xref:Unlinked_Pointer[unlinked list pointers] for more information.
 

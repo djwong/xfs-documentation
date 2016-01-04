@@ -3,47 +3,47 @@
 All the following XFS types can be found in xfs_types.h. NULL values are always
 -1 on disk (ie. all bits for the value set to one).
 
-.xfs_ino_t
+*xfs_ino_t*::
 Unsigned 64 bit absolute xref:Inode_Numbers[inode number].
 
-.xfs_off_t
+*xfs_off_t*::
 Signed 64 bit file offset.
 
-.xfs_daddr_t
+*xfs_daddr_t*::
 Signed 64 bit disk address.
 
-.xfs_agnumber_t
+*xfs_agnumber_t*::
 Unsigned 32 bit xref:Allocation_Groups[AG number].
 
-.xfs_agblock_t
+*xfs_agblock_t*::
 Unsigned 32 bit AG relative block number.
 
-.xfs_extlen_t
+*xfs_extlen_t*::
 Unsigned 32 bit xref:Data_Extents[extent] length in blocks.
 
-.xfs_extnum_t
+*xfs_extnum_t*::
 Signed 32 bit number of extents in a file.
 
-.xfs_dablk_t
+*xfs_dablk_t*::
 Unsigned 32 bit block number for xref:Directories[directories] and
 xref:Extended_Attributes[extended attributes].
 
-.xfs_dahash_t
+*xfs_dahash_t*::
 Unsigned 32 bit hash of a directory file name or extended attribute name.
 
-.xfs_dfsbno_t
+*xfs_dfsbno_t*::
 Unsigned 64 bit filesystem block number combining
 xref:Allocation_Groups[AG number] and block offset into the AG.
 
-.xfs_drfsbno_t
+*xfs_drfsbno_t*::
 Unsigned 64 bit raw filesystem block number.
 
-.xfs_drtbno_t
+*xfs_drtbno_t*::
 Unsigned 64 bit extent number in the xref:Real-time_Devices[real-time]
 sub-volume.
 
-.xfs_dfiloff_t
+*xfs_dfiloff_t*::
 Unsigned 64 bit block offset into a file.
 
-.xfs_dfilblks_t
+*xfs_dfilblks_t*::
 Unsigned 64 bit block count for a file.
