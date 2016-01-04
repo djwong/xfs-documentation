@@ -86,6 +86,7 @@
 				<member>Add some missing xfs_db examples.</member>
 				<member>Add an overview of XFS.</member>
 				<member>Document the journal format.</member>
+				<member>Document the realtime device.</member>
 			</simplelist>
 		</revdescription>
 	</revision>

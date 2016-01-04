@@ -160,24 +160,29 @@ Bitmap Inode and the Summary Inode.
 [[Real-Time_Bitmap_Inode]]
 === Real-Time Bitmap Inode
 
-The Bitmap Inode tracks the used/free space in the real-time device using an
-old-style bitmap. One bit is allocated per real-time extent. The size of an
-extent is specified by the superblock's +sb_rextsize+ value.
+The real time bitmap inode, +sb_rbmino+, tracks the used/free space in the
+real-time device using an old-style bitmap. One bit is allocated per real-time
+extent. The size of an extent is specified by the superblock's +sb_rextsize+
+value.
 
 The number of blocks used by the bitmap inode is equal to the number of
-real-time extents (+sb_rextents+) divided by the block size (+sb_blocksize+) and
-bits per byte. This value is stored in +sb_rbmblocks+. The nblocks and extent
-array for the inode should match this.
-
-[source, c]
-	xfs_ino_t		sb_rbmino;
+real-time extents (+sb_rextents+) divided by the block size (+sb_blocksize+)
+and bits per byte. This value is stored in +sb_rbmblocks+. The nblocks and
+extent array for the inode should match this.  Each real time block gets its
+own bit in the bitmap.
 
 [[Real-Time_Summary_Inode]]
 === Real-Time Summary Inode
 
-The Summary Inode keeps the used/free space accounting information for the
-real-time device.
+The real time summary inode, +sb_rsumino+, tracks the used and free space
+accounting information for the real-time device.  This file indexes the
+approximate location of each free extent on the real-time device first by
+log2(extent size) and then by the real-time bitmap block number.  The size of
+the summary inode file is equal to +sb_rbmblocks+ × log2(realtime device size)
+× sizeof(+xfs_suminfo_t+).  The entry for a given log2(extent size) and
+rtbitmap block number is 0 if there is no free extents of that size at that
+rtbitmap location, and positive if there are any.
 
-[source, c]
-	xfs_ino_t		sb_rsumino;
-
+This data structure is not particularly space efficient, however it is a very
+fast way to provide the same data as the two free space B+trees for regular
+files since the space is preallocated and metadata maintenance is minimal.

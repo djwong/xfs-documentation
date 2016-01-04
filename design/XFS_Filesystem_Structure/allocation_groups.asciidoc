@@ -909,5 +909,18 @@ been fully allocated.
 [[Real-time_Devices]]
 == Real-time Devices
 
-TODO
+The performance of the standard XFS allocator varies depending on the internal
+state of the various metadata indices enabled on the filesystem.  For
+applications which need to minimize the jitter of allocation latency, XFS
+supports the notion of a ``real-time device''.  This is a special device
+separate from the regular filesystem where extent allocations are tracked with
+a bitmap and free space is indexed with a two-dimensional array.  If an inode
+is flagged with +XFS_DIFLAG_REALTIME+, its data will live on the real time
+device.  The metadata for real time devices is discussed in the section about
+xref:Real-time_Inodes[real time inodes].
 
+By placing the real time device (and the journal) on separate high-performance
+storage devices, it is possible to reduce most of the unpredictability in I/O
+response times that come from metadata operations.
+
+None of the XFS per-AG B+trees are involved with real time files.
