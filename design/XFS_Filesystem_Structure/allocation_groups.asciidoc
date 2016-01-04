@@ -47,11 +47,11 @@ struct xfs_sb
 {
 	__uint32_t		sb_magicnum;
 	__uint32_t		sb_blocksize;
-	xfs_drfsbno_t		sb_dblocks;
-	xfs_drfsbno_t		sb_rblocks;
-	xfs_drtbno_t		sb_rextents;
+	xfs_rfsblock_t		sb_dblocks;
+	xfs_rfsblock_t		sb_rblocks;
+	xfs_rtblock_t		sb_rextents;
 	uuid_t			sb_uuid;
-	xfs_dfsbno_t		sb_logstart;
+	xfs_fsblock_t		sb_logstart;
 	xfs_ino_t		sb_rootino;
 	xfs_ino_t		sb_rbmino;
 	xfs_ino_t		sb_rsumino;

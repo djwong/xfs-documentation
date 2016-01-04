@@ -217,9 +217,9 @@ struct xfs_bmdr_block {
      __be16                     bb_numrecs;
 };
 struct xfs_bmbt_key {
-     xfs_dfiloff_t              br_startoff;
+     xfs_fileoff_t              br_startoff;
 };
-typedef xfs_dfsbno_t xfs_bmbt_ptr_t, xfs_bmdr_ptr_t;
+typedef xfs_fsblock_t xfs_bmbt_ptr_t, xfs_bmdr_ptr_t;
 ----
 
 * On disk, the B+tree node starts with the +xfs_bmbr_block_t+ header followed by

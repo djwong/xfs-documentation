@@ -10,7 +10,7 @@ Unsigned 64 bit absolute xref:Inode_Numbers[inode number].
 Signed 64 bit file offset.
 
 *xfs_daddr_t*::
-Signed 64 bit disk address.
+Signed 64 bit disk address (sectors).
 
 *xfs_agnumber_t*::
 Unsigned 32 bit xref:Allocation_Groups[AG number].
@@ -22,7 +22,10 @@ Unsigned 32 bit AG relative block number.
 Unsigned 32 bit xref:Data_Extents[extent] length in blocks.
 
 *xfs_extnum_t*::
-Signed 32 bit number of extents in a file.
+Signed 32 bit number of extents in a data fork.
+
+*xfs_aextnum_t*::
+Signed 16 bit number of extents in an attribute fork.
 
 *xfs_dablk_t*::
 Unsigned 32 bit block number for xref:Directories[directories] and
@@ -31,19 +34,25 @@ xref:Extended_Attributes[extended attributes].
 *xfs_dahash_t*::
 Unsigned 32 bit hash of a directory file name or extended attribute name.
 
-*xfs_dfsbno_t*::
+*xfs_fsblock_t*::
 Unsigned 64 bit filesystem block number combining
 xref:Allocation_Groups[AG number] and block offset into the AG.
 
-*xfs_drfsbno_t*::
+*xfs_rfsblock_t*::
 Unsigned 64 bit raw filesystem block number.
 
-*xfs_drtbno_t*::
+*xfs_rtblock_t*::
 Unsigned 64 bit extent number in the xref:Real-time_Devices[real-time]
 sub-volume.
 
-*xfs_dfiloff_t*::
+*xfs_fileoff_t*::
 Unsigned 64 bit block offset into a file.
 
-*xfs_dfilblks_t*::
+*xfs_filblks_t*::
 Unsigned 64 bit block count for a file.
+
+*uuid_t*::
+16-byte universally unique identifier (UUID).
+
+*xfs_fsize_t*::
+Signed 64 bit byte size of a file.

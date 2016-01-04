@@ -88,7 +88,7 @@ struct xfs_dinode_core {
      xfs_timestamp_t           di_mtime;
      xfs_timestamp_t           di_ctime;
      xfs_fsize_t               di_size;
-     xfs_drfsbno_t             di_nblocks;
+     xfs_rfsblock_t            di_nblocks;
      xfs_extlen_t              di_extsize;
      xfs_extnum_t              di_nextents;
      xfs_aextnum_t             di_anextents;
