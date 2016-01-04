@@ -104,6 +104,7 @@
 				<member>Discuss metadata integrity.</member>
 				<member>Document the free inode B+tree.</member>
 				<member>Create an index of magic numbers.</member>
+				<member>Document sparse inodes.</member>
 			</simplelist>
 		</revdescription>
 	</revision>

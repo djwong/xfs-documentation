@@ -293,7 +293,9 @@ Inode chunk alignment in fsblocks.  Prior to v5, the default value provided for
 inode chunks to have an 8KiB alignment.  Starting with v5, the default value
 scales with the multiple of the inode size over 256 bytes.  Concretely, this
 means an alignment of 16KiB for 512-byte inodes, 32KiB for 1024-byte inodes,
-etc.
+etc.  If sparse inodes are enabled, the +ir_startino+ field of each inode
+B+tree record must be aligned to this block granularity, even if the inode
+given by +ir_startino+ itself is sparse.
 
 *sb_unit*::
 Underlying stripe or raid unit in blocks.
@@ -392,6 +394,18 @@ Directory file type.  Each directory entry tracks the type of the inode to
 which the entry points.  This is a performance optimization to remove the need
 to load every inode into memory to iterate a directory.
 
+| +XFS_SB_FEAT_INCOMPAT_SPINODES+ |
+Sparse inodes.  This feature relaxes the requirement to allocate inodes in
+chunks of 64.  When the free space is heavily fragmented, there might exist
+plenty of free space but not enough contiguous free space to allocate a new
+inode chunk.  With this feature, the user can continue to create files until
+all free space is exhausted.
+
+Unused space in the inode B+tree records are used to track which parts of the
+inode chunk are not inodes.
+
+See the chapter on xref:Sparse_Inodes[Sparse Inodes] for more information.
+
 | +XFS_SB_FEAT_INCOMPAT_META_UUID+ |
 Metadata UUID.  The UUID stamped into each metadata block must match the value
 in +sb_meta_uuid+.  This enables the administrator to change +sb_uuid+ at will
@@ -407,7 +421,8 @@ defined.
 Superblock checksum.
 
 *sb_spino_align*::
-Sparse inode alignment.
+Sparse inode alignment, in fsblocks.  Each chunk of inodes referenced by a
+sparse inode B+tree record must be aligned to this block granularity.
 
 *sb_pquotino*::
 Project quota inode.
@@ -981,9 +996,9 @@ Specifies the number of levels in the free inode B+tree.
 [[Inode_Btrees]]
 == Inode B+trees
 
-Inodes are allocated in chunks of 64, and a B+tree is used to track these chunks
-of inodes as they are allocated and freed. The block containing root of the
-B+tree is defined by the AGI's +agi_root+ value.  If the
+Inodes are traditionally allocated in chunks of 64, and a B+tree is used to
+track these chunks of inodes as they are allocated and freed. The block
+containing root of the B+tree is defined by the AGI's +agi_root+ value.  If the
 +XFS_SB_FEAT_RO_COMPAT_FINOBT+ feature is enabled, a second B+tree is used to
 track the chunks containing free inodes; this is an optimization to speed up
 inode allocation.
@@ -1114,6 +1129,148 @@ recs[1] = [startino,freecount,free] 1:[5792,9,0xff80000000000000]
 
 Observe also that the AGI's +agi_newino+ points to this chunk, which has never
 been fully allocated.
+
+[[Sparse_Inodes]]
+== Sparse Inodes
+
+As mentioned in the previous section, XFS allocates inodes in chunks of 64.  If
+there are no free extents large enough to hold a full chunk of 64 inodes, the
+inode allocation fails and XFS claims to have run out of space.  On a
+filesystem with highly fragmented free space, this can lead to out of space
+errors long before the filesystem runs out of free blocks.
+
+The sparse inode feature tracks inode chunks in the inode B+tree as if they
+were full chunks but uses some previously unused bits in the freecount field to
+track which parts of the inode chunk are not allocated for use as inodes.  This
+allows XFS to allocate inodes one block at a time if absolutely necessary.
+
+The inode and free inode B+trees operate in the same manner as they do without
+the sparse inode feature; the B+tree header for the nodes and leaves use the
++xfs_btree_sblock+ structure which is the same as the header used in the
+xref:AG_Free_Space_Btrees[AGF B+trees].
+
+It is theoretically possible for a sparse inode B+tree record to reference
+multiple non-contiguous inode chunks.
+
+Leaves contain an array of the following structure:
+
+[source,c]
+----
+struct xfs_inobt_rec {
+     __be32                    ir_startino;
+     __be16                    ir_holemask;
+     __u8                      ir_count;
+     __u8                      ir_freecount;
+     __be64                    ir_free;
+};
+----
+
+*ir_startino*::
+The lowest-numbered inode in this chunk, rounded down to the nearest multiple
+of 64, even if the start of this chunk is sparse.
+
+*ir_holemask*::
+A 16 element bitmap showing which parts of the chunk are not allocated to
+inodes.  Each bit represents four inodes; if a bit is marked here, the
+corresponding bits in ir_free must also be marked.
+
+*ir_count*::
+Number of inodes allocated to this chunk.
+
+*ir_freecount*::
+Number of free inodes in this chunk.
+
+*ir_free*::
+A 64 element bitmap showing which inodes in this chunk are not available for
+allocation.
+
+==== xfs_db Sparse Inode AGI Example
+
+This example derives from an AG that has been deliberately fragmented.  The
+inode B+tree:
+
+----
+xfs_db> agi 0
+xfs_db> p
+magicnum = 0x58414749
+versionnum = 1
+seqno = 0
+length = 6400
+count = 10432
+root = 2381
+level = 2
+freecount = 0
+newino = 14912
+dirino = null
+unlinked[0-63] =
+uuid = b9b4623b-f678-4d48-8ce7-ce08950e3cd6
+lsn = 0x600000ac4
+crc = 0xef550dbc (correct)
+free_root = 4
+free_level = 1
+----
+
+This AGI was formatted on a v5 filesystem; notice the extra v5 fields.  So far
+everything else looks much the same as always.
+
+----
+xfs_db> addr root
+magic = 0x49414233
+level = 1
+numrecs = 2
+leftsib = null
+rightsib = null
+bno = 19048
+lsn = 0x50000192b
+uuid = b9b4623b-f678-4d48-8ce7-ce08950e3cd6
+owner = 0
+crc = 0xd98cd2ca (correct)
+keys[1-2] = [startino] 1:[128] 2:[35136]
+ptrs[1-2] = 1:3 2:2380
+xfs_db> addr ptrs[1]
+xfs_db> p
+magic = 0x49414233
+level = 0
+numrecs = 159
+leftsib = null
+rightsib = 2380
+bno = 24
+lsn = 0x600000ac4
+uuid = b9b4623b-f678-4d48-8ce7-ce08950e3cd6
+owner = 0
+crc = 0x836768a6 (correct)
+recs[1-159] = [startino,holemask,count,freecount,free]
+        1:[128,0,64,0,0]
+        2:[14912,0xff,32,0,0xffffffff]
+        3:[15040,0,64,0,0]
+        4:[15168,0xff00,32,0,0xffffffff00000000]
+        5:[15296,0,64,0,0]
+        6:[15424,0xff,32,0,0xffffffff]
+        7:[15552,0,64,0,0]
+        8:[15680,0xff00,32,0,0xffffffff00000000]
+        9:[15808,0,64,0,0]
+        10:[15936,0xff,32,0,0xffffffff]
+----
+
+Here we see the difference in the inode B+tree records.  For example, in record
+2, we see that the holemask has a value of 0xff.  This means that the first
+sixteen inodes in this chunk record do not actually map to inode blocks; the
+first inode in this chunk is actually inode 14944:
+
+----
+xfs_db> inode 14912
+Metadata corruption detected at block 0x3a40/0x2000
+...
+Metadata CRC error detected for ino 14912
+xfs_db> p core.magic
+core.magic = 0
+xfs_db> inode 14944
+xfs_db> p core.magic
+core.magic = 0x494e
+----
+
+The chunk record also indicates that this chunk has 32 inodes, and that the
+missing inodes are also ``free''.
 
 [[Real-time_Devices]]
 == Real-time Devices
