@@ -149,8 +149,24 @@ u.sfdir2.list[3].inumber.i4 = 25165956
 The raw data on disk with the first entry highlighted. The six byte header
 precedes the first entry:
 
-.Shortform Directory entry detail
-image::images/code/40.png[]
+[subs="quotes"]
+----
+xfs_db> type text
+xfs_db> p
+00: 49 4e 41 ed 01 01 00 02 00 00 00 00 00 00 00 00 INA.............
+10: 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 02 ................
+20: 44 ad 3a 83 1d a9 4a d0 44 ad 3a ab 0b c7 a7 d0 D.....J.D.......
+30: 44 ad 3a ab 0b c7 a7 d0 00 00 00 00 00 00 00 5e D...............
+40: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+50: 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 ................
+60: ff ff ff ff 04 00 00 00 00 80 *0f 00 30 66 72 61* ............0fra
+70: *6d 65 30 30 30 30 30 30 2e 74 73 74 01 80 00 81* me000000.tst....
+80: 0f 00 50 66 72 61 6d 65 30 30 30 30 30 31 2e 74 ..Pframe000001.t
+90: 73 74 01 80 00 82 0f 00 70 66 72 61 6d 65 30 30 st......pframe00
+a0: 30 30 30 32 2e 74 73 74 01 80 00 83 0f 00 90 66 0002.tst........
+b0: 72 61 6d 65 30 30 30 30 30 33 2e 74 73 74 01 80 rame000003.tst..
+cO: 00 84 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+----
 
 Next, an entry is deleted (frame000001.tst), and any entries after the deleted
 entry are moved or compacted to "cover" the hole:
@@ -479,8 +495,21 @@ and the length of the space. The tag remains intact at the +offset+length -
 sizeof(tag)+. The address for the hash is also cleared. The affected areas are
 highlighted below:
 
-.Block directory free entry detail
-image::images/code/46.png[]
+[subs="quotes"]
+----
+090: 00 00 00 00 02 00 00 84 0f 66 72 61 6d 65 30 30 ..........frame00
+0a0: 30 30 30 33 2e 74 73 74 00 00 00 00 00 00 00 90 0003.tst.........
+0b0: *ff ff 00 20* 02 00 00 85 0f 66 72 61 6d 65 30 30 ..........frame00
+0c0: 30 30 30 34 2e 74 73 74 00 00 00 00 *00 00 00 b0* 0004.tst.........
+0d0: 00 00 00 00 02 00 00 86 0f 66 72 61 6d 65 30 30 ..........frame00
+0e0: 30 30 30 35 2e 74 73 74 00 00 00 00 00 00 00 0d 0005.tst.........
+...
+fb0: 00 00 17 2e 00 00 00 04 83 a0 40 b4 00 00 00 0e .................
+fc0: 93 a0 40 b4 00 00 00 12 a3 a0 40 b4 00 00 00 06 .................
+fd0: b3 a0 40 b4 00 00 00 0a c3 a0 40 b4 00 00 00 1e .................
+fe0: d3 a0 40 b4 00 00 00 22 e3 a0 40 b4 *00 00 00 00* .................
+ff0: f3 a0 40 b4 00 00 00 1a 00 00 00 0a *00 00 00 01* .................
+----
 
 
 
@@ -1049,8 +1078,13 @@ block's +bestfree[0].length+ value.
 The raw disk layout, old data is not cleared after the array. The fbests array
 is highlighted:
 
-.Node directory freespace detail
-image::images/code/57.png[]
+[subs="quotes"]
+----
+xfs_db> type text
+xfs_db> p
+000: 58 44 32 46 00 00 00 00 00 00 00 05 00 00 00 05 XD2F............
+010: *00 10 00 10 00 10 00 10 3f 50* 00 00 1f 01 ff ff .........P......
+----
 
 TODO: Example with a hole in the middle
 
@@ -1188,6 +1222,21 @@ The leaves at each the end of a node always point to the end leaves in adjacent
 nodes. Directory block 8388928 forward pointer is to block 8388919, and vice
 versa as highlighted in the following example:
 
-.B+tree directory pointer detail
-image::images/code/60.png[]
+[subs="quotes"]
+----
+xfs_db> dblock 8388928
+xfs_db> type dir2
+xfs_db> p
+lhdr.info.forw = *8388919*
+lhdr.info.back = 8388937
+lhdr.info.magic = 0xd2ff
+...
 
+xfs_db> dblock 8388919
+xfs_db> type dir2
+xfs_db> p
+lhdr.info.forw = 8388706
+lhdr.info.back = *8388928*
+lhdr.info.magic = 0xd2ff
+...
+----

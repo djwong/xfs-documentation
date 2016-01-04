@@ -128,8 +128,27 @@ a.sfattr.list[1].value = "val1"
 We can determine the actual inode offset to be 220 (15 x 8 + 100) or +0xdc+.
 Examining the raw dump, the second attribute is highlighted:
 
-.Shortform Attribute detail
-image::images/code/65.png[]
+[subs="quotes"]
+----
+xfs_db> type text
+xfs_db> p
+09: 49 4e 81 a4 01 02 00 01 00 00 00 00 00 00 00 00 IN..............
+10: 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 02 ................
+20: 44 be 19 be 38 d1 26 98 44 be 1a be 38 d1 26 98 D...8...D...8...
+30: 44 be 1a e1 3a 9a ea 18 00 00 00 00 00 00 00 04 D...............
+40: 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 01 ................
+50: 00 00 0f 01 00 00 00 00 00 00 00 00 00 00 00 00 ................
+60: ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 12 ................
+70: 53 a0 00 01 00 00 00 00 00 00 00 00 00 00 00 00 ................
+80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+90: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+a0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+b0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+c0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+d0: 00 00 00 00 00 00 00 00 00 00 00 00 *00 18* 02 00 ................   &lt;-- hdr.totsize = 0x18
+e0: 05 00 00 65 6d 70 74 79 *05 04 02 74 72 75 73 74* ...empty...trust
+f0: *76 61 6c 31* 00 00 00 00 00 00 00 00 00 00 00 00 val1............
+----
 
 Adding another attribute with attr1, the format is converted to extents and
 +di_forkoff+ remains unchanged (and all those zeros in the dump above remain
@@ -192,8 +211,34 @@ a.sfattr.list[1].value = "val1"
 
 Another attribute is added:
 
-.Shortform Multiple Attribute detail
-image::images/code/66.png[]
+[subs="quotes"]
+----
+xfs_db> p
+...
+core.naextents = 0
+*core.forkoff = 13*
+core.aformat = 1 (local)
+...
+a.sfattr.hdr.totsize = 52
+a.sfattr.hdr.count = 3
+a.sfattr.list[0].namelen = 10
+a.sfattr.list[0].valuelen = 0
+a.sfattr.list[0].root = 0
+a.sfattr.list[0].secure = 0
+a.sfattr.list[0].name = "empty_attr"
+a.sfattr.list[1].namelen = 7
+a.sfattr.list[1].valuelen = 4
+a.sfattr.list[1].root = 1
+a.sfattr.list[1].secure = 0
+a.sfattr.list[1].name = "trust_a"
+a.sfattr.list[1].value = "val1"
+a.sfattr.list[2].namelen = 6
+a.sfattr.list[2].valuelen = 12
+a.sfattr.list[2].root = 0
+a.sfattr.list[2].secure = 0
+a.sfattr.list[2].name = "second"
+a.sfattr.list[2].value = "second_value"
+----
 
 One more is added:
 
@@ -233,8 +278,27 @@ a.sfattr.list[3].value = "contents"
 A raw dump is shown to compare with the attr1 dump on a prior page, the header
 is highlighted:
 
-.Shortform attribute header detail
-image::images/code/67.png[]
+[subs="quotes"]
+----
+xfs_db> type text
+xfs_db> p
+00: 49 4e 81 a4 01 02 00 01 00 00 00 00 00 00 00 00 IN..............
+10: 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 05 ................
+20: 44 be 24 cd 0f b0 96 18 44 be 24 cd 0f b0 96 18 D.......D.......
+30: 44 be 2d f5 01 62 7a 18 00 00 00 00 00 00 00 04 D....bz.........
+40: 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 01 ................
+50: 00 00 0a 01 00 00 00 00 00 00 00 00 00 00 00 00 ................
+60: ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 01 ................
+70: 41 c0 00 01 00 00 00 00 00 00 00 00 00 00 00 00 A...............
+80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+90: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+a0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+b0: 00 00 00 00 *00 45 04 00* 0a 00 00 65 6d 70 74 79 .....E.....empty
+c0: 5f 61 74 74 72 07 04 02 74 72 75 73 74 5f 61 76 .attr...trust.av
+d0: 61 6c 31 06 0c 00 73 65 63 6f 6e 64 73 65 63 6f all...secondseco
+e0: 6e 64 5f 76 61 6c 75 65 06 08 04 70 6f 6c 69 63 nd.value...polic
+f0: 79 63 6f 6e 74 65 6e 74 73 64 5f 76 61 6c 75 65 ycontentsd.value
+----
 
 It can be clearly seen that attr2 allows many more attributes to be stored in
 an inode before they are moved to another filesystem block.
@@ -444,9 +508,19 @@ flag set and the values are printed.
 A raw disk dump shows the attributes. The last attribute added is highlighted
 (offset 4044 or 0xfcc):
 
-.Leaf Attribute detail
-image::images/code/71.png[]
-
+[subs="quotes"]
+----
+000: 00 00 00 00 00 00 00 00 fb ee 00 00 00 03 00 34 ...............4
+010: 0f cc 00 00 00 38 0f 94 00 00 00 00 00 00 00 00 .....8..........
+020: 1e 9d 39 34 0f cc 01 00 1e 9d 39 37 0f dc 01 00 ..94......97....
+030: fc f8 9d 4f 0f ec 00 00 00 00 00 00 00 00 00 00 ...0............
+040: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00.................
+...
+fc0: 00 00 00 00 00 00 00 00 00 00 00 00 *00 06 05 61* ...............a
+fd0: *74 74 72 32 76 61 6c 75 65 32* 00 00 00 06 05 61 ttr2value2.....a
+fe0: 74 74 72 31 76 61 6c 75 65 31 00 00 00 00 00 01 ttr1value1......
+ff0: 00 00 77 e4 08 62 69 67 5f 61 74 74 72 00 00 00 ..w..big.attr...
+----
 
 [[Node_Attributes]]
 == Node Attributes
@@ -522,16 +596,77 @@ xfs_db> hash attribute_267
 In the root btree node, this falls between +0x3437922e+ and +0x3437d22a+,
 therefore leaf 11 or attribute block 5 will contain the entry.
 
-.Node Attribute lookup detail
-image::images/code/73-74.png[]
+[subs="quotes"]
+----
+xfs_db> ablock 5
+xfs_db> p
+hdr.info.forw = 4
+hdr.info.back = 3
+hdr.info.magic = 0xfbee
+hdr.count = 96
+hdr.usedbytes = 2688
+hdr.firstused = 1408
+hdr.holes = 0
+hdr.freemap[0-2] = [base,size] 0:[800,608] 1:[0,0] 2:[0,0]
+entries[0.95] = [hashval,nameidx,incomplete,root,secure,local]
+          0:[0x3437922f,4068,0,0,0,1]
+          1:[0x343792a6,4040,0,0,0,1]
+          2:[0x343792a7,4012,0,0,0,1]
+          3:[0x343792a8,3984,0,0,0,1]
+          ...
+          82:[0x3437d1a7,2892,0,0,0,1]
+          *83:[0x3437d1a8,2864,0,0,0,1]*
+          84:[0x3437d1a9,2836,0,0,0,1]
+          ...
+          95:[0x3437d22a,2528,0,0,0,1]
+nvlist[0].valuelen = 10
+nvlist[0].namelen = 13
+nvlist[0].name = "attribute_310"
+nvlist[0].value = "value_316\d"
+nvlist[1].valuelen = 16
+nvlist[1].namelen = 13
+nvlist[1].name = "attribute_309"
+nvlist[1].value = "value_309\d"
+nvlist[2].valuelen = 10
+nvlist[2].namelen = 13
+nvlist[2].name = "attribute_308"
+nvlist[2].value = "value_308\d"
+nvlist[3].valuelen = 10
+nvlist[3].namelen = 13
+nvlist[3].name = "attribute_307"
+nvlist[3].value = "value_307\d"
+...
+nvlist[82].valuelen = 10
+nvlist[82].namelen = 13
+nvlist[82].name = "attribute_268"
+nvlist[82].value = "value_268\d"
+nvlist[83].valuelen = 10
+nvlist[83].namelen = 13
+nvlist[83].name = "attribute_267"
+nvlist[83].value = "value_267\d"
+nvlist[84].valuelen = 10
+nvlist[84].namelen = 13
+nvlist[84].name = "attribute_266"
+nvlist[84].value = "value_266\d"
+...
+----
 
 Each of the hash entries has +XFS_ATTR_LOCAL+ flag set (1), which means the
 attribute's value follows immediately after the name. Raw disk of the name/value
 pair at offset 2864 (0xb30), highlighted with "value_267\d" following
 immediately after the name:
 
-.Node Attribute value detail
-image::images/code/74.png[]
+[subs="quotes"]
+----
+b00: 62 75 74 65 5f 32 36 35 76 61 6c 75 65 5f 32 36 bute.265value.26
+b10: 35 0a 00 00 00 0a 0d 61 74 74 72 69 62 75 74 65 5......attribute
+b20: 51 32 36 36 76 61 6c 75 65 5f 32 36 36 0a 00 00 .266value.266...
+b30: *00 0a 0d 61 74 74 72 69 62 75 74 65 5f 32 36 37* ...attribute.267
+b40: *76 61 6c 75 65 5f 32 36 37 0a* 00 00 00 0a 0d 61 value.267......a
+b50: 74 74 72 69 62 75 74 65 5f 32 36 38 76 61 6c 75 ttribute.268va1u
+b60: 65 5f 32 36 38 0a 00 00 00 0a 0d 61 74 74 72 69 e.268......attri
+b70: 62 75 74 65 5f 32 36 39 76 61 6c 75 65 5f 32 36 bute.269value.26
+----
 
 Each entry starts on a 32-bit (4 byte) boundary, therefore the highlighted entry
 has 2 unused bytes after it.
