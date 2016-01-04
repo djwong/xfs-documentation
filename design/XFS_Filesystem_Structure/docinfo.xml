@@ -82,6 +82,7 @@
 		<revdescription>
 			<simplelist>
 				<member>Miscellaneous fixes.</member>
+				<member>Add missing field definitions.</member>
 			</simplelist>
 		</revdescription>
 	</revision>

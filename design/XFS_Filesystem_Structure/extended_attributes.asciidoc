@@ -334,7 +334,16 @@ typedef struct xfs_attr_leaf_map {
      __be16                     base;
      __be16                     size;
 } xfs_attr_leaf_map_t;
+----
 
+*base*::
+Block offset of the free area, in bytes.
+
+*size*::
+Size of the free area, in bytes.
+
+[source, c]
+----
 typedef struct xfs_attr_leaf_hdr {
      xfs_da_blkinfo_t           info;
      __be16                     count;
@@ -344,27 +353,90 @@ typedef struct xfs_attr_leaf_hdr {
      __u8                       pad1;
      xfs_attr_leaf_map_t        freemap[3];
 } xfs_attr_leaf_hdr_t;
+----
 
+*info*::
+Directory/attribute block header.
+
+*count*::
+Number of entries.
+
+*usedbytes*::
+Number of bytes used in the leaf block.
+
+*firstused*::
+Block offset of the first entry in use, in bytes.
+
+*holes*::
+Set to 1 if block compaction is necessary.
+
+*pad1*::
+Padding to maintain alignment to 64-bit boundaries.
+
+[source, c]
+-----
 typedef struct xfs_attr_leaf_entry {
      __be32                     hashval;
      __be16                     nameidx;
      __u8                       flags;
      __u8                       pad2;
 } xfs_attr_leaf_entry_t;
+----
 
+*hashval*::
+Hash value of the attribute name.
+
+*nameidx*::
+Block offset of the name entry, in bytes.
+
+*flags*::
+Attribute flags, as specified xref:Attribute_Flags[above].
+
+*pad2*::
+Pads the structure to 64-bit boundaries.
+
+[source, c]
+----
 typedef struct xfs_attr_leaf_name_local {
      __be16                     valuelen;
      __u8                       namelen;
      __u8                       nameval[1];
 } xfs_attr_leaf_name_local_t;
+----
 
+*valuelen*::
+Length of the value, in bytes.
+
+*namelen*::
+Length of the name, in bytes.
+
+*nameval*::
+The name and the value.  String values are not zero-terminated.
+
+[source, c]
+----
 typedef struct xfs_attr_leaf_name_remote {
      __be32                     valueblk;
      __be32                     valuelen;
      __u8                       namelen;
      __u8                       name[1];
 } xfs_attr_leaf_name_remote_t;
+----
 
+*valueblk*::
+The logical block in the attribute map where the value is located.
+
+*valuelen*::
+Length of the value, in bytes.
+
+*namelen*::
+Length of the name, in bytes.
+
+*nameval*::
+The name.  String values are not zero-terminated.
+
+[source, c]
+----
 typedef struct xfs_attr_leafblock  {
      xfs_attr_leaf_hdr_t           hdr;
      xfs_attr_leaf_entry_t         entries[1];
@@ -372,6 +444,20 @@ typedef struct xfs_attr_leafblock  {
      xfs_attr_leaf_name_remote_t   valuelist;
 } xfs_attr_leafblock_t;
 ----
+
+*hdr*::
+Attribute block header.
+
+*entries*::
+A variable-length array of attribute entries.
+
+*namelist*::
+A variable-length array of descriptors of local attributes.  The location and
+size of these entries is determined dynamically.
+
+*valuelist*::
+A variable-length array of descriptors of remote attributes.  The location and
+size of these entries is determined dynamically.
 
 Each leaf header uses the magic number +XFS_ATTR_LEAF_MAGIC+ (0xfbee).
 

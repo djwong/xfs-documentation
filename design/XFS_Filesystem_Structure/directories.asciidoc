@@ -75,11 +75,35 @@ typedef struct xfs_dir2_sf {
      xfs_dir2_sf_hdr_t         hdr;
      xfs_dir2_sf_entry_t       list[1];
 } xfs_dir2_sf_t;
+----
+
+*hdr*::
+Short form directory header.
+
+*list*::
+An array of variable-length directory entry records.
+
+[source, c]
+----
 typedef struct xfs_dir2_sf_hdr {
      __uint8_t                 count;
      __uint8_t                 i8count;
      xfs_dir2_inou_t           parent;
 } xfs_dir2_sf_hdr_t;
+----
+
+*count*::
+Number of directory entries.
+
+*i8count*::
+Number of directory entries requiring 64-bit entries, if any inode numbers
+require 64-bits.  Zero otherwise.
+
+*parent*::
+The absolute inode number of this directory's parent.
+
+[source, c]
+----
 typedef struct xfs_dir2_sf_entry {
      __uint8_t                 namelen;
      xfs_dir2_sf_off_t         offset;
@@ -88,6 +112,25 @@ typedef struct xfs_dir2_sf_entry {
      xfs_dir2_inou_t           inumber;
 } xfs_dir2_sf_entry_t;
 ----
+
+*namelen*::
+Length of the name, in bytes.
+
+*offset*::
+Offset tag used to assist with directory iteration.
+
+*name*::
+The name of the directory entry.  The entry is not NULL-terminated.
+
+*ftype*::
+The type of the inode.  This is used to avoid reading the inode while iterating
+a directory.  The +XFS_SB_VERSION2_FTYPE+ feature must be set, or this field
+will not be present.
+
+*inumber*::
+The inode number that this entry points to.  The length is either 32 or 64
+bits, depending on whether +icount+ or +i8count+, respectively, are set in the
+header.
 
 .Short form directory layout
 image::images/39.png[]
@@ -259,18 +302,67 @@ typedef struct xfs_dir2_block {
      xfs_dir2_leaf_entry_t      leaf[1];
      xfs_dir2_block_tail_t      tail;
 } xfs_dir2_block_t;
+----
+
+*hdr*::
+Directory block header.
+
+*u*::
+Union of directory and unused entries.
+
+*leaf*::
+Hash values of the entries in this block.
+
+*tail*::
+Bookkeeping for the leaf entries.
+
+[source, c]
+----
 typedef struct xfs_dir2_data_hdr {
      __uint32_t                 magic;
      xfs_dir2_data_free_t       bestfree[XFS_DIR2_DATA_FD_COUNT];
 } xfs_dir2_data_hdr_t;
+----
+
+*magic*::
+Magic number for this directory block.
+
+*bestfree*::
+An array pointing to free regions in the directory block.
+
+[source, c]
+----
 typedef struct xfs_dir2_data_free {
      xfs_dir2_data_off_t        offset;
      xfs_dir2_data_off_t        length;
 } xfs_dir2_data_free_t;
+----
+
+*offset*::
+Block offset of a free block, in bytes.
+
+*length*::
+Length of the free block, in bytes.
+
+Space inside the directory block can be used for directory entries or unused
+entries.  This is signified via a union of the two types:
+
+[source, c]
+-----
 typedef union {
      xfs_dir2_data_entry_t      entry;
      xfs_dir2_data_unused_t     unused;
 } xfs_dir2_data_union_t;
+----
+
+*entry*::
+A directory entry.
+
+*unused*::
+An unused entry.
+
+[source, c]
+-----
 typedef struct xfs_dir2_data_entry {
      xfs_ino_t                  inumber;
      __uint8_t                  namelen;
@@ -278,20 +370,73 @@ typedef struct xfs_dir2_data_entry {
      __uint8_t                  ftype;
      xfs_dir2_data_off_t        tag;
 } xfs_dir2_data_entry_t;
+----
+
+*inumber*::
+The inode number that this entry points to.
+
+*namelen*::
+Length of the name, in bytes.
+
+*name*::
+The name associated with this entry.
+
+*ftype*::
+The type of the inode.  This is used to avoid reading the inode while iterating
+a directory.  The +XFS_SB_VERSION2_FTYPE+ feature must be set, or this field
+will not be present.
+
+*tag*::
+Starting offset of the entry, in bytes.  This is used for directory iteration.
+
+[source, c]
+-----
 typedef struct xfs_dir2_data_unused {
      __uint16_t                 freetag;  /* 0xffff */
      xfs_dir2_data_off_t        length;
      xfs_dir2_data_off_t        tag;
 } xfs_dir2_data_unused_t;
+----
+
+*freetag*::
+Magic number signifying that this is an unused entry.  Must be 0xFFFF.
+
+*length*::
+Length of this unused entry, in bytes.
+
+*tag*::
+Starting offset of the entry, in bytes.
+
+[source, c]
+-----
 typedef struct xfs_dir2_leaf_entry {
      xfs_dahash_t               hashval;
      xfs_dir2_dataptr_t         address;
 } xfs_dir2_leaf_entry_t;
+----
+
+*hashval*::
+Hash value of the name of the directory entry.  This is used to speed up entry
+lookups.
+
+*address*::
+Block offset of the entry, in eight byte units.
+
+[source, c]
+-----
 typedef struct xfs_dir2_block_tail {
      __uint32_t                 count;
      __uint32_t                 stale;
 } xfs_dir2_block_tail_t;
 ----
+
+*count*::
+Number of leaf entries.
+
+*stale*::
+Number of free leaf entries.
+
+Following is a diagram of how these pieces fit together for a block directory.
 
 .Block directory layout
 image::images/43.png[]
@@ -550,6 +695,14 @@ typedef struct xfs_dir2_data {
 } xfs_dir2_data_t;
 ----
 
+*hdr*::
+Data block header.
+
+*u*::
+Union of directory and unused entries, exactly the same as in a block directory.
+
+// split lists
+
 * The "leaf" extent uses the following structures:
 
 [source, c]
@@ -560,15 +713,47 @@ typedef struct xfs_dir2_leaf {
      xfs_dir2_data_off_t       bests[1];
      xfs_dir2_leaf_tail_t      tail;
 } xfs_dir2_leaf_t;
+----
+
+*hdr*::
+Directory leaf header.
+
+*ents*::
+Hash values of the entries in this block.
+
+*bests*::
+An array pointing to free regions in the directory block.
+
+*tail*::
+Bookkeeping for the leaf entries.
+
+[source, c]
+----
 typedef struct xfs_dir2_leaf_hdr {
      xfs_da_blkinfo_t          info;
      __uint16_t                count;
      __uint16_t                stale;
 } xfs_dir2_leaf_hdr_t;
+----
+
+*info*::
+Leaf btree block header.
+
+*count*::
+Number of leaf entries.
+
+*stale*::
+Number of stale/zeroed leaf entries.
+
+[source, c]
+----
 typedef struct xfs_dir2_leaf_tail {
      __uint32_t                bestcount;
 } xfs_dir2_leaf_tail_t;
 ----
+
+*bestcount*::
+Number of best free entries.
 
 [[Directory_Attribute_Block_Header]]
 === Directory and Attribute Block Headers
@@ -586,6 +771,20 @@ typedef struct xfs_da_blkinfo {
      __be16                     pad;
 } xfs_da_blkinfo_t;
 ----
+
+*forw*::
+Logical block offset of the previous B+tree block at this level.
+
+*back*::
+Logical block offset of the next B+tree block at this level.
+
+*magic*::
+Magic number for this directory/attribute block.
+
+*pad*::
+Padding to maintain alignment.
+
+// split lists
 
 * The magic number of the leaf block is +XFS_DIR2_LEAF1_MAGIC+ (0xd2f1).
 
@@ -879,11 +1078,35 @@ typedef struct xfs_dir2_free_hdr {
      __int32_t                 nvalid;
      __int32_t                 nused;
 } xfs_dir2_free_hdr_t;
+----
+
+*magic*::
+The magic number of the free block, "XD2F" (0x0x58443246).
+
+*firstdb*::
+The starting directory block number for the bests array.
+
+*nvalid*::
+Number of elements in the bests array.
+
+*nused*::
+Number of valid elements in the bests array.
+
+[source, c]
+----
 typedef struct xfs_dir2_free {
      xfs_dir2_free_hdr_t       hdr;
      xfs_dir2_data_off_t       bests[1];
 } xfs_dir2_free_t;
 ----
+
+*hdr*::
+Free block header.
+
+*bests*::
+An array specifying the best free counts in each directory data block.
+
+// split lists
 
 * The location of the leaf blocks can be in any order, the only way to determine
 the appropriate is by the node block hash/before values. Given a hash to look up,
@@ -911,6 +1134,23 @@ typedef struct xfs_da_intnode {
      } btree[1];
 } xfs_da_intnode_t;
 ----
+
+*info*::
+Directory/attribute block info.  The magic number is +XFS_DA_NODE_MAGIC+
+(0xfebe).
+
+*count*::
+Number of node entries in this block.
+
+*level*::
+The level of this block in the B+tree.
+
+*hashval*::
+The hash value of a particular record.
+
+*before*::
+The directory/attribute logical block containing all entries up to the
+corresponding hash value.
 
 * The freeindex's +bests+ array starts from the end of the block and grows to the
 start of the block.

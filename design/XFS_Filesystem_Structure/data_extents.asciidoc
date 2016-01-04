@@ -33,8 +33,16 @@ struct xfs_bmbt_irec {
 };
 ----
 
+*br_startoff*::
+Logical block offset of this mapping.
 
+*br_startblock*::
+Filesystem block of this mapping.
 
+*br_blockcount*::
+The length of this mapping.
+
+*br_state*::
 The extent +br_state+ field uses the following enum declaration:
 
 [source, c]
@@ -249,6 +257,25 @@ struct xfs_btree_lblock {
      __be64                    bb_rightsib;
 };
 ----
+
+*bb_magic*::
+Specifies the magic number for the BMBT block: "BMAP" (0x424d4150).
+
+*bb_level*::
+The level of the tree in which this block is found.  If this value is 0, this
+is a leaf block and contains records; otherwise, it is a node block and
+contains keys and pointers.
+
+*bb_numrecs*::
+Number of records in this block.
+
+*bb_leftsib*::
+FS block number of the left sibling of this B+tree node.
+
+*bb_rightsib*::
+FS block number of the right sibling of this B+tree node.
+
+// force-split the lists
 
 * For intermediate nodes, the data following +xfs_btree_lblock+ is the same as
 the root node: array of +xfs_bmbt_key+ value followed by an array of

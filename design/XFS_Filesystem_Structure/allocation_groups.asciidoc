@@ -501,6 +501,23 @@ struct xfs_btree_sblock {
 };
 ----
 
+*bb_magic*::
+Specifies the magic number for the per-AG B+tree block.
+
+*bb_level*::
+The level of the tree in which this block is found.  If this value is 0, this
+is a leaf block and contains records; otherwise, it is a node block and
+contains keys and pointers.
+
+*bb_numrecs*::
+Number of records in this block.
+
+*bb_leftsib*::
+AG block number of the left sibling of this B+tree node.
+
+*bb_rightsib*::
+AG block number of the right sibling of this B+tree node.
+
 [[AG_Free_Space_Btrees]]
 === AG Free Space B+trees
 
@@ -518,6 +535,12 @@ struct xfs_alloc_rec {
      __be32                    ar_blockcount;
 };
 ----
+
+*ar_startblock*::
+AG block number of the start of the free space.
+
+*ar_blockcount*::
+Length of the free space.
 
 Node pointers are an AG relative block pointer:
 
@@ -775,6 +798,15 @@ struct xfs_inobt_rec {
      __be64                    ir_free;
 };
 ----
+
+*ir_startino*::
+The lowest-numbered inode in this chunk.
+
+*ir_freecount*::
+Number of free inodes in this chunk.
+
+*ir_free*::
+A 64 element bitmap showing which inodes in this chunk are free.
 
 Nodes contain key/pointer pairs using the following types:
 
