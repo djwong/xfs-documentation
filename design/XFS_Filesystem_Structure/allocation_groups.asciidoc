@@ -1275,6 +1275,9 @@ missing inodes are also ``free''.
 [[Real-time_Devices]]
 == Real-time Devices
 
+[NOTE]
+This feature is not well supported on Linux.
+
 The performance of the standard XFS allocator varies depending on the internal
 state of the various metadata indices enabled on the filesystem.  For
 applications which need to minimize the jitter of allocation latency, XFS
