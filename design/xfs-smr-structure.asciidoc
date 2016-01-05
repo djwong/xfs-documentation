@@ -142,7 +142,7 @@ Hence we don't actually need any major new data moving functionality in the
 kernel to enable this, except maybe an event channel for the kernel to tell
 xfs_fsr it needs to do some cleaning work.
 
-If we arrange zones into zoen groups, we also have a method for keeping new
+If we arrange zones into zone groups, we also have a method for keeping new
 allocations out of regions we are re-organising. That is, we need to be able to
 mark zone groups as "read only" so the kernel will not attempt to allocate from
 them while the cleaner is running and re-organising the data within the zones in
@@ -173,7 +173,7 @@ it will need ot be packaged by distros.
 
 If mkfs cannot find ensough random write space for the amount of metadata we
 need to track all the space in the sequential write zones and a decent amount of
-internal fielsystem metadata (inodes, etc) then it will need to fail. Drive
+internal filesystem metadata (inodes, etc) then it will need to fail. Drive
 vendors are going to need to provide sufficient space in these regions for us
 to be able to make use of it, otherwise we'll simply not be able to do what we
 need to do.
@@ -193,7 +193,7 @@ bitmaps for verifying used space should already be there.
 THere be dragons waiting for us if we don't have random write zones for
 metadata. If that happens, we cannot repair metadata in place and we will have
 to redesign xfs_repair from the ground up to support such functionality. That's
-jus tnot going to happen, so we'll need drives with a significant amount of
+just not going to happen, so we'll need drives with a significant amount of
 random write space for all our metadata......
 
 == Quantification of Random Write Zone Capacity
@@ -316,7 +316,7 @@ spiral.
 I suspect the best we will be able to do with fallocate based preallocation is
 to mark the region as delayed allocation.
 
-=== Allocation Alignemnt
+=== Allocation Alignment
 
 With zone based write pointers, we lose all capability of write alignment to the
 underlying storage - our only choice to write is the current set of write

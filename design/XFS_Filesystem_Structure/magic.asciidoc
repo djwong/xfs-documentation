@@ -82,5 +82,5 @@ XFS can create really big filesystems!
 | Max Dir Size          | 32GiB | 32GiB | 32GiB
 |=====
 
-Linux doesn't suppport files or devices larger than 8EiB, so the block
+Linux doesn't support files or devices larger than 8EiB, so the block
 limitations are largely ignorable.

@@ -5,7 +5,7 @@ v1.0, Feb 2014: Initial conversion to asciidoc
 == Introduction
 
 The largest scalability problem facing XFS is not one of algorithmic
-scalability, but of verification of the filesystem structure. Scalabilty of the
+scalability, but of verification of the filesystem structure. Scalability of the
 structures and indexes on disk and the algorithms for iterating them are
 adequate for supporting PB scale filesystems with billions of inodes, however it
 is this very scalability that causes the verification problem.

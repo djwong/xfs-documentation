@@ -35,7 +35,7 @@ units as used on the +mkfs.xfs+ command line to configure these parameters.
 The performance examples given in this section are highly dependent on storage,
 CPU and RAM configuration. They are intended as guidelines to illustrate
 behavioural differences, not the exact performance any configuration will
-acheive.
+achieve.
 =====
 
 === Directory block size
@@ -238,7 +238,7 @@ available for storing attributes.
 When attributes are stored in the literal area of the inode, both attribute
 names and attribute values are limited to a maximum size of 254 bytes. If either
 name or value exceeds 254 bytes in length, or the total space used by the
-atributes exceeds the size of the literal area, the entire set of attributes
+attributes exceeds the size of the literal area, the entire set of attributes
 stored on the inode are pushed to a separate attribute block instead of being
 stored inline.
 
@@ -280,7 +280,7 @@ Therefore, the size of the log determines the concurrency of metadata
 modification operations the filesystem can sustain, as well as how much and how
 frequently metadata writeback occurs.  A smaller log forces data
 write-back more frequently than a larger log, but can result in lower
-synchronisation overhead as there will be fewer changes aggreagted in memory
+synchronisation overhead as there will be fewer changes aggregated in memory
 between synchronisation triggers. Memory pressure also generates synchronisatin
 triggers, so large logs may not benefit systems with limited memory.
 
@@ -364,7 +364,7 @@ between 32KB and 256KB. It can be configured by use of the +logbsize+ mount
 option.
 
 The number of log buffers can also be configured to between 2 and 8. The default
-is 8 log buffersi and can be configured by the use of the +logbufs+ mount
+is 8 log buffers can be configured by the use of the +logbufs+ mount
 option. It is rare that this needs to be configured, and it should only be
 considered if there is limited memory and lots of XFS filesystems such that the
 memory allocated to the log buffers would consume a significant amount of

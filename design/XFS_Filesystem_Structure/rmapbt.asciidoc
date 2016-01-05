@@ -83,7 +83,7 @@ reverse-mapping B+tree.  This may be lifted in future versions of the patchset.
 For the reverse-mapping B+tree, the key definition is larger than the usual AG
 block number.  On a classic XFS filesystem, each block has only one owner, which
 means that +rm_startblock+ is sufficient to uniquely identify each record.
-However, shared block support (refink) on XFS breaks that assumption; now
+However, shared block support (reflink) on XFS breaks that assumption; now
 filesystem blocks can be linked to any logical block offset of any file inode.
 Therefore, the key must include the owner and offset information to preserve the
 1 to 1 relation between key and record.  The key has the following structure:
