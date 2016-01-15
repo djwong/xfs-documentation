@@ -1,0 +1,23 @@
+[[Testing]]
+= Testing Filesystem Changes
+
+People put a lot of trust in filesystems to preserve their data in a reliable
+fashion.  To that end, it is very important that users and developers have
+access to a suite of regression tests that can be used to prove correct
+operation of any given filesystem code, or to analyze failures to fix problems
+found in the code.  The XFS regression test suite, +xfstests+, is hosted at
++git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git+.  Most tests apply to
+filesystems in general, but the suite also contains tests for features specific
+to each filesystem.
+
+When fixing bugs, it is important to provide a testcase exposing the bug so
+that the developers can avoid a future re-occurrence of the regression.
+Furthermore, if you're developing a new user-visible feature for XFS, please
+help the rest of the development community to sustain and maintain the whole
+codebase by providing generous test coverage to check its behavior.
+
+When altering, adding, or removing an on-disk data structure, please remember
+to update both the in-kernel structure size checks in +xfs_ondisk.h+ and to
+ensure that your changes are reflected in xfstest xfs/122.  These regression
+tests enable us to detect compiler bugs, alignment problems, and anything
+else that might result in the creation of incompatible filesystem images.
