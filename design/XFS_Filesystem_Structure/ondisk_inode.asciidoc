@@ -66,7 +66,7 @@ of the literal area and +di_forkoff+. The attribute fork is located between
 [[Inode_Core]]
 == Inode Core
 
-The inode's core is 96 bytes in size and contains information about the file
+The inode's core is 176 bytes in size and contains information about the file
 itself including most stat data information about data and attribute forks after
 the core within the inode. It uses the following structure:
 
@@ -313,8 +313,16 @@ Counts the number of changes made to the attributes in this inode.
 Log sequence number of the last inode write.
 
 *di_flags2*::
-Specifies extended flags associated with a v3 inode.  There are no flags defined
-currently.
+Specifies extended flags associated with a v3 inode.
+
+.Version 3 Inode flags
+[options="header"]
+|=====
+| Flag				| Description
+| +XFS_DIFLAG2_DAX+		|
+For a file, enable DAX to increase performance on persistent-memory storage.
+If set on a directory, files created in the directory will inherit this flag.
+|=====
 
 *di_pad2*::
 Padding for future expansion of the inode.
