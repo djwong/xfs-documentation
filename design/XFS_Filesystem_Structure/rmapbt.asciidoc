@@ -57,6 +57,7 @@ absolute inode number, but can also correspond to one of the following:
 | +XFS_RMAP_OWN_INOBT+          | Per-allocation group inode B+tree blocks.  This includes free inode B+tree blocks.
 | +XFS_RMAP_OWN_INODES+         | Inode chunks
 | +XFS_RMAP_OWN_REFC+           | Per-allocation group refcount B+tree blocks.  This will be used for reflink support.
+| +XFS_RMAP_OWN_COW+		| Blocks that have been reserved for a copy-on-write operation that has not completed.
 |=====
 
 *rm_fork*::

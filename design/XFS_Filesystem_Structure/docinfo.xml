@@ -133,6 +133,8 @@
 		<revdescription>
 			<simplelist>
 				<member>Document the reverse-mapping btree.</member>
+				<member>Document the reference-count btree.</member>
+				<member>Discuss block sharing, reflink, &amp; deduplication.</member>
 			</simplelist>
 		</revdescription>
 	</revision>
