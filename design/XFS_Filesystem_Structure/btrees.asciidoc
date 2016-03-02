@@ -1,0 +1,200 @@
+= B+trees
+
+XFS uses b+trees to index all metadata records.  This well known data structure
+is used to provide efficient random and sequential access to metadata records
+while minimizing seek times.  There are two btree formats: a short format
+for records pertaining to a single allocation group, since all block pointers
+in an AG are 32-bits in size; and a long format for records pertaining to a
+file, since file data can have 64-bit block offsets.  Each b+tree block is
+either a leaf node containing records, or an internal node containing keys and
+pointers to other b+tree blocks.  The tree consists of a root block which may
+point to some number of other blocks; blocks in the bottom level of the b+tree
+contains only records.
+
+Leaf blocks of both types of b+trees have the same general format: a header
+describing the data in the block, and an array of records.  The specific header
+formats are given in the next two sections, and the record format is provided
+by the b+tree client itself.  The generic b+tree code does not have any
+specific knowledge of the record format.
+
+----
++--------+------------+------------+
+| header |   record   | records... |
++--------+------------+------------+
+----
+
+Internal node blocks of both types of b+trees also have the same general
+format: a header describing the data in the block, an array of keys, and an
+array of pointers.  Each pointer may be associated with one or two keys.  The
+first key uniquely identifies the first record accessible via the leftmost path
+down the branch of the tree.
+
+If the records in a b+tree are indexed by an interval, then a range of keys can
+uniquely identify a single record.  For example, if a record covers blocks
+12-16, then any one of the keys 12, 13, 14, 15, or 16 return the same record.
+In this case, the key for the record describing "12-16" is 12.  If none of the
+records overlap, we only need to store one key.
+
+This is the format of a standard b+tree node:
+
+----
++--------+---------+---------+---------+---------+
+| header |   key   | keys... |   ptr   | ptrs... |
++--------+---------+---------+---------+---------+
+----
+
+If the b+tree records do not overlap, performing a b+tree lookup is simple.
+Start with the root.  If it is a leaf block, perform a binary search of the
+records until we find the record with a lower key than our search key.  If the
+block is a node block, perform a binary search of the keys until we find a
+key lower than our search key, then follow the pointer to the next block.
+Repeat until we find a record.
+
+However, if b+tree records contain intervals and are allowed to overlap, the
+internal nodes of the b+tree become larger:
+
+----
++--------+---------+----------+---------+-------------+---------+---------+
+| header | low key | high key | low key | high key... |   ptr   | ptrs... |
++--------+---------+----------+---------+-------------+---------+---------+
+----
+
+The low keys are exactly the same as the keys in the non-overlapping b+tree.
+High keys, however, are a little different.  Recall that a record with a key
+consisting of an interval can be referenced by a number of keys.  Since the low
+key of a record indexes the low end of that key range, the high key indexes the
+high end of the key range.  Returning to the example above, the high key for
+the record describing "12-16" is 16.  The high key recorded in a b+tree node
+is the largest of the high keys of all records accessible under the subtree
+rooted by the pointer.  For a level 1 node, this is the largest high key in
+the pointed-to leaf node; for any other node, this is the largest of the high
+keys in the pointed-to node.
+
+Nodes and leaves use the same magic numbers.
+
+[[Short_Format_Btrees]]
+== Short Format B+trees
+
+Each allocation group uses a ``short format'' B+tree to index various
+information about the allocation group.  The structure is called short format
+because all block pointers are AG block numbers.  The trees use the following
+header:
+
+[source, c]
+----
+struct xfs_btree_sblock {
+     __be32                    bb_magic;
+     __be16                    bb_level;
+     __be16                    bb_numrecs;
+     __be32                    bb_leftsib;
+     __be32                    bb_rightsib;
+
+     /* version 5 filesystem fields start here */
+     __be64                    bb_blkno;
+     __be64                    bb_lsn;
+     uuid_t                    bb_uuid;
+     __be32                    bb_owner;
+     __le32                    bb_crc;
+};
+----
+
+*bb_magic*::
+Specifies the magic number for the per-AG B+tree block.
+
+*bb_level*::
+The level of the tree in which this block is found.  If this value is 0, this
+is a leaf block and contains records; otherwise, it is a node block and
+contains keys and pointers.
+
+*bb_numrecs*::
+Number of records in this block.
+
+*bb_leftsib*::
+AG block number of the left sibling of this B+tree node.
+
+*bb_rightsib*::
+AG block number of the right sibling of this B+tree node.
+
+*bb_blkno*::
+FS block number of this B+tree block.
+
+*bb_lsn*::
+Log sequence number of the last write to this block.
+
+*bb_uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*bb_owner*::
+The AG number that this B+tree block ought to be in.
+
+*bb_crc*::
+Checksum of the B+tree block.
+
+[[Long_Format_Btrees]]
+== Long Format B+trees
+
+If an inode's block map requires more records than fit into the inode's fork
+area, it will use a b+tree to index the records.  The nodes and leaves of this
+B+tree use the +xfs_btree_lblock+ declaration:
+
+[source, c]
+----
+struct xfs_btree_lblock {
+     __be32                    bb_magic;
+     __be16                    bb_level;
+     __be16                    bb_numrecs;
+     __be64                    bb_leftsib;
+     __be64                    bb_rightsib;
+
+     /* version 5 filesystem fields start here */
+     __be64                    bb_blkno;
+     __be64                    bb_lsn;
+     uuid_t                    bb_uuid;
+     __be64                    bb_owner;
+     __le32                    bb_crc;
+     __be32                    bb_pad;
+};
+----
+
+*bb_magic*::
+Specifies the magic number for the BMBT block: ``BMAP'' (0x424d4150).
+On a v5 filesystem, this is ``BMA3'' (0x424d4133).
+
+*bb_level*::
+The level of the tree in which this block is found.  If this value is 0, this
+is a leaf block and contains records; otherwise, it is a node block and
+contains keys and pointers.
+
+*bb_numrecs*::
+Number of records in this block.
+
+*bb_leftsib*::
+FS block number of the left sibling of this B+tree node.
+
+*bb_rightsib*::
+FS block number of the right sibling of this B+tree node.
+
+*bb_blkno*::
+FS block number of this B+tree block.
+
+*bb_lsn*::
+Log sequence number of the last write to this block.
+
+*bb_uuid*::
+The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
+depending on which features are set.
+
+*bb_owner*::
+The AG number that this B+tree block ought to be in.
+
+*bb_crc*::
+Checksum of the B+tree block.
+
+*bb_pad*::
+Pads the structure to 64 bytes.
+
+// force-split the lists
+
+* Long format b+trees are rooted in an inode, not a separate block.
+
