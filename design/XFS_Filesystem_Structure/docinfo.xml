@@ -138,4 +138,20 @@
 			</simplelist>
 		</revdescription>
 	</revision>
+	<revision>
+		<revnumber>3.1415</revnumber>
+		<date>March 2016</date>
+		<author>
+			<firstname>Darrick</firstname>
+			<surname>Wong</surname>
+			<email></email>
+		</author>
+		<revdescription>
+			<simplelist>
+				<member>Move the b+tree discussion to a separate chapter.</member>
+				<member>Discuss overlapping interval b+trees.</member>
+				<member>Document the reverse mapping btree changes when reflink is enabled.</member>
+			</simplelist>
+		</revdescription>
+	</revision>
 </revhistory>
