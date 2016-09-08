@@ -52,6 +52,8 @@ include::common_types.asciidoc[]
 
 include::magic.asciidoc[]
 
+include::testing.asciidoc[]
+
 // return titles to normal
 :leveloffset: 0
 
