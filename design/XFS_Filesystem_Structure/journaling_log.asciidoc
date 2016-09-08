@@ -368,7 +368,7 @@ typedef struct xfs_efd_log_format {
 ----
 
 *efd_type*::
-The signature of an EFI operation, 0x1236.  This value is in host-endian order,
+The signature of an EFD operation, 0x1237.  This value is in host-endian order,
 not big-endian like the rest of XFS.
 
 *efd_size*::
@@ -382,9 +382,9 @@ A 64-bit number that binds the corresponding EFI log item to this EFD log item.
 
 *efd_extents*::
 Variable-length array of extents to be freed.  The array length is given by
-+efi_nextents+.  The record type will be either +xfs_extent_64_t+ or
++efd_nextents+.  The record type will be either +xfs_extent_64_t+ or
 +xfs_extent_32_t+; this can be determined from the log item size (+oh_len+) and
-the number of extents (+efi_nextents+).
+the number of extents (+efd_nextents+).
 
 [[Inode_Log_Item]]
 === Inode Updates
