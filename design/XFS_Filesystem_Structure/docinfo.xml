@@ -122,4 +122,21 @@
 			</simplelist>
 		</revdescription>
 	</revision>
+	<revision>
+		<revnumber>3.141</revnumber>
+		<date>June 2016</date>
+		<author>
+			<firstname>Darrick</firstname>
+			<surname>Wong</surname>
+			<email></email>
+		</author>
+		<revdescription>
+			<simplelist>
+				<member>Document the reverse-mapping btree.</member>
+				<member>Move the b+tree info to a separate chapter.</member>
+				<member>Discuss overlapping interval b+trees.</member>
+				<member>Discuss new log items for atomic updates.</member>
+			</simplelist>
+		</revdescription>
+	</revision>
 </revhistory>

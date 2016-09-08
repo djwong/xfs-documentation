@@ -209,6 +209,8 @@ magic number to distinguish themselves.  Buffer data items only appear after
 | +XFS_LI_DQUOT+		| 0x123d        | xref:Quota_Update_Log_Item[Update Quota]
 | +XFS_LI_QUOTAOFF+		| 0x123e        | xref:Quota_Off_Log_Item[Quota Off]
 | +XFS_LI_ICREATE+		| 0x123f        | xref:Inode_Create_Log_Item[Inode Creation]
+| +XFS_LI_RUI+			| 0x1240        | xref:RUI_Log_Item[Reverse Mapping Update Intent]
+| +XFS_LI_RUD+			| 0x1241        | xref:RUD_Log_Item[Reverse Mapping Update Done]
 |=====
 
 [[Log_Transaction_Headers]]
@@ -385,6 +387,126 @@ Variable-length array of extents to be freed.  The array length is given by
 +efd_nextents+.  The record type will be either +xfs_extent_64_t+ or
 +xfs_extent_32_t+; this can be determined from the log item size (+oh_len+) and
 the number of extents (+efd_nextents+).
+
+[[RUI_Log_Item]]
+=== Reverse Mapping Updates Intent
+
+The next two operation types work together to handle deferred reverse mapping
+updates.  Naturally, the mappings to be updated can be expressed in terms of
+mapping extents:
+
+[source, c]
+----
+struct xfs_map_extent {
+     __uint64_t                me_owner;
+     __uint64_t                me_startblock;
+     __uint64_t                me_startoff;
+     __uint32_t                me_len;
+     __uint32_t                me_flags;
+};
+----
+
+*me_owner*::
+Owner of this reverse mapping.  See the values in the section about
+xref:Reverse_Mapping_Btree[reverse mapping] for more information.
+
+*me_startblock*::
+Filesystem block of this mapping.
+
+*me_startoff*::
+Logical block offset of this mapping.
+
+*me_len*::
+The length of this mapping.
+
+*me_flags*::
+The lower byte of this field is a type code indicating what sort of
+reverse mapping operation we want.  The upper three bytes are flag bits.
+
+.Reverse mapping update log intent types
+[options="header"]
+|=====
+| Value				| Description
+| +XFS_RMAP_EXTENT_MAP+		| Add a reverse mapping for file data.
+| +XFS_RMAP_EXTENT_MAP_SHARED+	| Add a reverse mapping for file data for a file with shared blocks.
+| +XFS_RMAP_EXTENT_UNMAP+	| Remove a reverse mapping for file data.
+| +XFS_RMAP_EXTENT_UNMAP_SHARED+	| Remove a reverse mapping for file data for a file with shared blocks.
+| +XFS_RMAP_EXTENT_CONVERT+	| Convert a reverse mapping for file data between unwritten and normal.
+| +XFS_RMAP_EXTENT_CONVERT_SHARED+	| Convert a reverse mapping for file data between unwritten and normal for a file with shared blocks.
+| +XFS_RMAP_EXTENT_ALLOC+	| Add a reverse mapping for non-file data.
+| +XFS_RMAP_EXTENT_FREE+	| Remove a reverse mapping for non-file data.
+|=====
+
+.Reverse mapping update log intent flags
+[options="header"]
+|=====
+| Value				| Description
+| +XFS_RMAP_EXTENT_ATTR_FORK+	| Extent is for the attribute fork.
+| +XFS_RMAP_EXTENT_BMBT_BLOCK+	| Extent is for a block mapping btree block.
+| +XFS_RMAP_EXTENT_UNWRITTEN+	| Extent is unwritten.
+|=====
+
+The ``rmap update intent'' operation comes first; it tells the log that XFS
+wants to update some reverse mappings.  This record is crucial for correct log
+recovery because it enables us to spread a complex metadata update across
+multiple transactions while ensuring that a crash midway through the complex
+update will be replayed fully during log recovery.
+
+[source, c]
+----
+struct xfs_rui_log_format {
+     __uint16_t                rui_type;
+     __uint16_t                rui_size;
+     __uint32_t                rui_nextents;
+     __uint64_t                rui_id;	
+     struct xfs_map_extent     rui_extents[1];
+};
+----
+
+*rui_type*::
+The signature of an RUI operation, 0x1240.  This value is in host-endian order,
+not big-endian like the rest of XFS.
+
+*rui_size*::
+Size of this log item.  Should be 1.
+
+*rui_nextents*::
+Number of reverse mappings.
+
+*rui_id*::
+A 64-bit number that binds the corresponding RUD log item to this RUI log item.
+
+*rui_extents*::
+Variable-length array of reverse mappings to update.
+
+[[RUD_Log_Item]]
+=== Completion of Reverse Mapping Updates
+
+The ``reverse mapping update done'' operation complements the ``reverse mapping
+update intent'' operation.  This second operation indicates that the update
+actually happened, so that log recovery needn't replay the update.  The RUD and
+the actual updates are typically found in a new transaction following the
+transaction in which the RUI was logged.
+
+[source, c]
+----
+struct xfs_rud_log_format {
+      __uint16_t               rud_type;
+      __uint16_t               rud_size;
+      __uint32_t               __pad;
+      __uint64_t               rud_rui_id;
+};
+----
+
+*rud_type*::
+The signature of an RUD operation, 0x1241.  This value is in host-endian order,
+not big-endian like the rest of XFS.
+
+*rud_size*::
+Size of this log item.  Should be 1.
+
+*rud_rui_id*::
+A 64-bit number that binds the corresponding RUI log item to this RUD log item.
 
 [[Inode_Log_Item]]
 === Inode Updates

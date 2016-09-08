@@ -1,0 +1,305 @@
+[[Reverse_Mapping_Btree]]
+== Reverse-Mapping B+tree
+
+[NOTE]
+This data structure is under construction!  Details may change.
+
+If the feature is enabled, each allocation group has its own reverse
+block-mapping B+tree, which grows in the free space like the free space
+B+trees.  As mentioned in the chapter about
+xref:Reconstruction[reconstruction], this data structure is another piece of
+the puzzle necessary to reconstruct the data or attribute fork of a file from
+reverse-mapping records; we can also use it to double-check allocations to
+ensure that we are not accidentally cross-linking blocks, which can cause
+severe damage to the filesystem.
+
+This B+tree is only present if the +XFS_SB_FEAT_RO_COMPAT_RMAPBT+
+feature is enabled.  The feature requires a version 5 filesystem.
+
+Each record in the reverse-mapping B+tree has the following structure:
+
+[source, c]
+----
+struct xfs_rmap_rec {
+     __be32                     rm_startblock;
+     __be32                     rm_blockcount;
+     __be64                     rm_owner;
+     __be64                     rm_fork:1;
+     __be64                     rm_bmbt:1;
+     __be64                     rm_unwritten:1;
+     __be64                     rm_unused:7;
+     __be64                     rm_offset:54;
+};
+----
+
+*rm_startblock*::
+AG block number of this record.
+
+*rm_blockcount*::
+The length of this extent.
+
+*rm_owner*::
+A 64-bit number describing the owner of this extent.  This is typically the
+absolute inode number, but can also correspond to one of the following:
+
+.Special owner values
+[options="header"]
+|=====
+| Value				| Description
+| +XFS_RMAP_OWN_NULL+           | No owner.  This should never appear on disk.
+| +XFS_RMAP_OWN_UNKNOWN+        | Unknown owner; for EFI recovery.  This should never appear on disk.
+| +XFS_RMAP_OWN_FS+             | Allocation group headers
+| +XFS_RMAP_OWN_LOG+            | XFS log blocks
+| +XFS_RMAP_OWN_AG+             | Per-allocation group B+tree blocks.  This means free space B+tree blocks, blocks on the freelist, and reverse-mapping B+tree blocks.
+| +XFS_RMAP_OWN_INOBT+          | Per-allocation group inode B+tree blocks.  This includes free inode B+tree blocks.
+| +XFS_RMAP_OWN_INODES+         | Inode chunks
+|=====
+
+*rm_fork*::
+If +rm_owner+ describes an inode, this can be 1 if this record is for an
+attribute fork.
+
+*rm_bmbt*::
+If +rm_owner+ describes an inode, this can be 1 to signify that this record is
+for a block map B+tree block.  In this case, +rm_offset+ has no meaning.
+
+*rm_unwritten*::
+A flag indicating that the extent is unwritten.  This corresponds to the flag in
+the xref:Data_Extents[extent record] format which means +XFS_EXT_UNWRITTEN+.
+
+*rm_offset*::
+The 54-bit logical file block offset, if +rm_owner+ describes an inode.
+Meaningless otherwise.
+
+[NOTE]
+The single-bit flag values +rm_unwritten+, +rm_fork+, and +rm_bmbt+ are packed
+into the larger fields in the C structure definition.
+
+The key has the following structure:
+
+[source, c]
+----
+struct xfs_rmap_key {
+     __be32                     rm_startblock;
+     __be64                     rm_owner;
+     __be64                     rm_fork:1;
+     __be64                     rm_bmbt:1;
+     __be64                     rm_reserved:1;
+     __be64                     rm_unused:7;
+     __be64                     rm_offset:54;
+};
+----
+
+For the reverse-mapping B+tree on a filesystem that supports sharing of file
+data blocks, the key definition is larger than the usual AG block number.  On a
+classic XFS filesystem, each block has only one owner, which means that
++rm_startblock+ is sufficient to uniquely identify each record.  However,
+shared block support (reflink) on XFS breaks that assumption; now filesystem
+blocks can be linked to any logical block offset of any file inode.  Therefore,
+the key must include the owner and offset information to preserve the 1 to 1
+relation between key and record.
+
+* As the reference counting is AG relative, all the block numbers are only
+32-bits.
+* The +bb_magic+ value is "RMB3" (0x524d4233).
+* The +xfs_btree_sblock_t+ header is used for intermediate B+tree node as well
+as the leaves.
+* Each pointer is associated with two keys.  The first of these is the "low
+key", which is the key of the smallest record accessible through the pointer.
+This low key has the same meaning as the key in all other btrees.  The second
+key is the high key, which is the maximum of the largest key that can be used
+to access a given record underneath the pointer.  Recall that each record
+in the reverse mapping b+tree describes an interval of physical blocks mapped
+to an interval of logical file block offsets; therefore, it makes sense that
+a range of keys can be used to find to a record.
+
+=== xfs_db rmapbt Example
+
+This example shows a reverse-mapping B+tree from a freshly populated root
+filesystem:
+
+----
+xfs_db> agf 0
+xfs_db> addr rmaproot
+xfs_db> p
+magic = 0x524d4233
+level = 1
+numrecs = 43
+leftsib = null
+rightsib = null
+bno = 56
+lsn = 0x3000004c8
+uuid = 1977221d-8345-464e-b1f4-aa2ea36895f4
+owner = 0
+crc = 0x7cf8be6f (correct)
+keys[1-43] = [startblock,owner,offset]
+keys[1-43] = [startblock,owner,offset,attrfork,bmbtblock,startblock_hi,owner_hi,
+	     offset_hi,attrfork_hi,bmbtblock_hi]
+        1:[0,-3,0,0,0,351,4418,66,0,0]
+        2:[417,285,0,0,0,827,4419,2,0,0]
+        3:[829,499,0,0,0,2352,573,55,0,0]
+        4:[1292,710,0,0,0,32168,262923,47,0,0]
+        5:[32215,-5,0,0,0,34655,2365,3411,0,0]
+        6:[34083,1161,0,0,0,34895,265220,1,0,1]
+        7:[34896,256191,0,0,0,36522,-9,0,0,0]
+        ...
+        41:[50998,326734,0,0,0,51430,-5,0,0,0]
+        42:[51431,327010,0,0,0,51600,325722,11,0,0]
+        43:[51611,327112,0,0,0,94063,23522,28375272,0,0]
+ptrs[1-43] = 1:5 2:6 3:8 4:9 5:10 6:11 7:418 ... 41:46377 42:48784 43:49522
+----
+
+We arbitrarily pick pointer 17 to traverse downwards:
+
+----
+xfs_db> addr ptrs[17]
+xfs_db> p
+magic = 0x524d4233
+level = 0
+numrecs = 168
+leftsib = 36284
+rightsib = 37617
+bno = 294760
+lsn = 0x200002761
+uuid = 1977221d-8345-464e-b1f4-aa2ea36895f4
+owner = 0
+crc = 0x2dad3fbe (correct)
+recs[1-168] = [startblock,blockcount,owner,offset,extentflag,attrfork,bmbtblock]
+        1:[40326,1,259615,0,0,0,0] 2:[40327,1,-5,0,0,0,0]
+        3:[40328,2,259618,0,0,0,0] 4:[40330,1,259619,0,0,0,0]
+        ...
+        127:[40540,1,324266,0,0,0,0] 128:[40541,1,324266,8388608,0,0,0]
+        129:[40542,2,324266,1,0,0,0] 130:[40544,32,-7,0,0,0,0]
+----
+
+Several interesting things pop out here.  The first record shows that inode
+259,615 has mapped AG block 40,326 at offset 0.  We confirm this by looking at
+the block map for that inode:
+
+----
+xfs_db> inode 259615
+xfs_db> bmap
+data offset 0 startblock 40326 (0/40326) count 1 flag 0
+----
+
+Next, notice records 127 and 128, which describe neighboring AG blocks that are
+mapped to non-contiguous logical blocks in inode 324,266.  Given the logical
+offset of 8,388,608 we surmise that this is a leaf directory, but let us
+confirm:
+
+----
+xfs_db> inode 324266
+xfs_db> p core.mode
+core.mode = 040755
+xfs_db> bmap
+data offset 0 startblock 40540 (0/40540) count 1 flag 0
+data offset 1 startblock 40542 (0/40542) count 2 flag 0
+data offset 3 startblock 40576 (0/40576) count 1 flag 0
+data offset 8388608 startblock 40541 (0/40541) count 1 flag 0
+xfs_db> p core.mode
+core.mode = 0100644
+xfs_db> dblock 0
+xfs_db> p dhdr.hdr.magic
+dhdr.hdr.magic = 0x58444433
+xfs_db> dblock 8388608
+xfs_db> p lhdr.info.hdr.magic
+lhdr.info.hdr.magic = 0x3df1
+----
+
+Indeed, this inode 324,266 appears to be a leaf directory, as it has regular
+directory data blocks at low offsets, and a single leaf block.
+
+Notice further the two reverse-mapping records with negative owners.  An owner
+of -7 corresponds to +XFS_RMAP_OWN_INODES+, which is an inode chunk, and an
+owner code of -5 corresponds to +XFS_RMAP_OWN_AG+, which covers free space
+B+trees and free space.  Let's see if block 40,544 is part of an inode chunk:
+
+----
+xfs_db> blockget
+xfs_db> fsblock 40544
+xfs_db> blockuse
+block 40544 (0/40544) type inode
+xfs_db> stack
+1:
+        byte offset 166068224, length 4096
+        buffer block 324352 (fsbno 40544), 8 bbs
+        inode 324266, dir inode 324266, type data
+xfs_db> type inode
+xfs_db> p
+core.magic = 0x494e
+----
+
+Our suspicions are confirmed.  Let's also see if 40,327 is part of a free space
+tree:
+
+----
+xfs_db> fsblock 40327
+xfs_db> blockuse
+block 40327 (0/40327) type btrmap
+xfs_db> type rmapbt
+xfs_db> p
+magic = 0x524d4233
+----
+
+As you can see, the reverse block-mapping B+tree is an important secondary
+metadata structure, which can be used to reconstruct damaged primary metadata.
+Now let's look at an extend rmap btree:
+
+----
+xfs_db> agf 0
+xfs_db> addr rmaproot
+xfs_db> p
+magic = 0x34524d42
+level = 1
+numrecs = 5
+leftsib = null
+rightsib = null
+bno = 6368
+lsn = 0x100000d1b
+uuid = 400f0928-6b88-4c37-af1e-cef1f8911f3f
+owner = 0
+crc = 0x8d4ace05 (correct)
+keys[1-5] = [startblock,owner,offset,attrfork,bmbtblock,startblock_hi,owner_hi,offset_hi,attrfork_hi,bmbtblock_hi]
+1:[0,-3,0,0,0,705,132,681,0,0]
+2:[24,5761,0,0,0,548,5761,524,0,0]
+3:[24,5929,0,0,0,380,5929,356,0,0]
+4:[24,6097,0,0,0,212,6097,188,0,0]
+5:[24,6277,0,0,0,807,-7,0,0,0]
+ptrs[1-5] = 1:5 2:771 3:9 4:10 5:11
+----
+
+The second pointer stores both the low key [24,5761,0,0,0] and the high key
+[548,5761,524,0,0], which means that we can expect block 771 to contain records
+starting at physical block 24, inode 5761, offset zero; and that one of the
+records can be used to find a reverse mapping for physical block 548, inode
+5761, and offset 524:
+
+----
+xfs_db> addr ptrs[2]
+xfs_db> p
+magic = 0x34524d42
+level = 0
+numrecs = 168
+leftsib = 5
+rightsib = 9
+bno = 6168
+lsn = 0x100000d1b
+uuid = 400f0928-6b88-4c37-af1e-cef1f8911f3f
+owner = 0
+crc = 0xd58eff0e (correct)
+recs[1-168] = [startblock,blockcount,owner,offset,extentflag,attrfork,bmbtblock]
+1:[24,525,5761,0,0,0,0]
+2:[24,524,5762,0,0,0,0]
+3:[24,523,5763,0,0,0,0]
+...
+166:[24,360,5926,0,0,0,0]
+167:[24,359,5927,0,0,0,0]
+168:[24,358,5928,0,0,0,0]
+----
+
+Observe that the first record in the block starts at physical block 24, inode
+5761, offset zero, just as we expected.  Note that this first record is also
+indexed by the highest key as provided in the node block; physical block 548,
+inode 5761, offset 524 is the very last block mapped by this record.  Furthermore,
+note that record 168, despite being the last record in this block, has a lower
+maximum key (physical block 382, inode 5928, offset 23) than the first record.

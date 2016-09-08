@@ -44,6 +44,7 @@ relevant chapters.  Magic numbers tend to have consistent locations:
 | +XFS_ATTR_LEAF_MAGIC+		| 0xfbee	|     	| xref:Leaf_Attributes[Leaf Attribute]
 | +XFS_ATTR3_LEAF_MAGIC+	| 0x3bee	|     	| xref:Leaf_Attributes[Leaf Attribute], v5 only
 | +XFS_ATTR3_RMT_MAGIC+		| 0x5841524d	| XARM	| xref:Remote_Values[Remote Attribute Value], v5 only
+| +XFS_RMAP_CRC_MAGIC+		| 0x524d4233	| RMB3	| xref:Reverse_Mapping_Btree[Reverse Mapping B+tree], v5 only
 |=====
 
 The magic numbers for log items are at offset zero in each log item, but items
@@ -61,6 +62,8 @@ are not aligned to blocks.
 | +XFS_LI_DQUOT+		| 0x123d        |       | xref:Quota_Update_Log_Item[Update Quota Log Item]
 | +XFS_LI_QUOTAOFF+		| 0x123e        |       | xref:Quota_Off_Log_Item[Quota Off Log Item]
 | +XFS_LI_ICREATE+		| 0x123f        |       | xref:Inode_Create_Log_Item[Inode Creation Log Item]
+| +XFS_LI_RUI+			| 0x1240        |       | xref:RUI_Log_Item[Reverse Mapping Update Intent]
+| +XFS_LI_RUD+			| 0x1241        |       | xref:RUD_Log_Item[Reverse Mapping Update Done]
 |=====
 
 = Theoretical Limits
