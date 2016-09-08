@@ -45,6 +45,7 @@ relevant chapters.  Magic numbers tend to have consistent locations:
 | +XFS_ATTR3_LEAF_MAGIC+	| 0x3bee	|     	| xref:Leaf_Attributes[Leaf Attribute], v5 only
 | +XFS_ATTR3_RMT_MAGIC+		| 0x5841524d	| XARM	| xref:Remote_Values[Remote Attribute Value], v5 only
 | +XFS_RMAP_CRC_MAGIC+		| 0x524d4233	| RMB3	| xref:Reverse_Mapping_Btree[Reverse Mapping B+tree], v5 only
+| +XFS_REFC_CRC_MAGIC+		| 0x52334643	| R3FC	| xref:Reference_Count_Btree[Reference Count B+tree], v5 only
 |=====
 
 The magic numbers for log items are at offset zero in each log item, but items
@@ -64,6 +65,10 @@ are not aligned to blocks.
 | +XFS_LI_ICREATE+		| 0x123f        |       | xref:Inode_Create_Log_Item[Inode Creation Log Item]
 | +XFS_LI_RUI+			| 0x1240        |       | xref:RUI_Log_Item[Reverse Mapping Update Intent]
 | +XFS_LI_RUD+			| 0x1241        |       | xref:RUD_Log_Item[Reverse Mapping Update Done]
+| +XFS_LI_CUI+			| 0x1242        |       | xref:CUI_Log_Item[Reference Count Update Intent]
+| +XFS_LI_CUD+			| 0x1243        |       | xref:CUD_Log_Item[Reference Count Update Done]
+| +XFS_LI_BUI+			| 0x1244        |       | xref:BUI_Log_Item[File Block Mapping Update Intent]
+| +XFS_LI_BUD+			| 0x1245        |       | xref:BUD_Log_Item[File Block Mapping Update Done]
 |=====
 
 = Theoretical Limits

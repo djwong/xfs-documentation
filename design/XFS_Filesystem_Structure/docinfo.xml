@@ -136,6 +136,8 @@
 				<member>Move the b+tree info to a separate chapter.</member>
 				<member>Discuss overlapping interval b+trees.</member>
 				<member>Discuss new log items for atomic updates.</member>
+				<member>Document the reference-count btree.</member>
+				<member>Discuss block sharing, reflink, &amp; deduplication.</member>
 			</simplelist>
 		</revdescription>
 	</revision>

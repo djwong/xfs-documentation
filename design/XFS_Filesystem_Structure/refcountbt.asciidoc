@@ -1,0 +1,145 @@
+[[Reference_Count_Btree]]
+== Reference Count B+tree
+
+[NOTE]
+This data structure is under construction!  Details may change.
+
+To support the sharing of file data blocks (reflink), each allocation group has
+its own reference count B+tree, which grows in the allocated space like the
+inode B+trees.  This data could be gleaned by performing an interval query of
+the reverse-mapping B+tree, but doing so would come at a huge performance
+penalty.  Therefore, this data structure is a cache of computable information.
+
+This B+tree is only present if the +XFS_SB_FEAT_RO_COMPAT_REFLINK+
+feature is enabled.  The feature requires a version 5 filesystem.
+
+Each record in the reference count B+tree has the following structure:
+
+[source, c]
+----
+struct xfs_refcount_rec {
+     __be32                     rc_startblock;
+     __be32                     rc_blockcount;
+     __be32                     rc_refcount;
+};
+----
+
+*rc_startblock*::
+AG block number of this record.
+
+*rc_blockcount*::
+The length of this extent.
+
+*rc_refcount*::
+Number of mappings of this filesystem extent.
+
+Node pointers are an AG relative block pointer:
+
+[source, c]
+----
+struct xfs_refcount_key {
+     __be32                     rc_startblock;
+};
+----
+
+* As the reference counting is AG relative, all the block numbers are only
+32-bits.
+* The +bb_magic+ value is "R3FC" (0x52334643).
+* The +xfs_btree_sblock_t+ header is used for intermediate B+tree node as well
+as the leaves.
+
+=== xfs_db refcntbt Example
+
+For this example, an XFS filesystem was populated with a root filesystem and
+a deduplication program was run to create shared blocks:
+
+----
+xfs_db> agf 0
+xfs_db> addr refcntroot
+xfs_db> p
+magic = 0x52334643
+level = 1
+numrecs = 6
+leftsib = null
+rightsib = null
+bno = 36892
+lsn = 0x200004ec2
+uuid = f1f89746-e00b-49c9-96b3-ecef0f2f14ae
+owner = 0
+crc = 0x75f35128 (correct)
+keys[1-6] = [startblock] 1:[14] 2:[65633] 3:[65780] 4:[94571] 5:[117201] 6:[152442]
+ptrs[1-6] = 1:7 2:25836 3:25835 4:18447 5:18445 6:18449
+xfs_db> addr ptrs[3]
+xfs_db> p
+magic = 0x52334643
+level = 0
+numrecs = 80
+leftsib = 25836
+rightsib = 18447
+bno = 51670
+lsn = 0x200004ec2
+uuid = f1f89746-e00b-49c9-96b3-ecef0f2f14ae
+owner = 0
+crc = 0xc3962813 (correct)
+recs[1-80] = [startblock,blockcount,refcount]
+        1:[65780,1,2] 2:[65781,1,3] 3:[65785,2,2] 4:[66640,1,2]
+        5:[69602,4,2] 6:[72256,16,2] 7:[72871,4,2] 8:[72879,20,2]
+        9:[73395,4,2] 10:[75063,4,2] 11:[79093,4,2] 12:[86344,16,2]
+----
+
+Record 6 in the reference count B+tree for AG 0 indicates that the AG extent
+starting at block 72,256 and running for 16 blocks has a reference count of 2.
+This means that there are two files sharing the block:
+
+----
+xfs_db> blockget -n
+xfs_db> fsblock 72256
+xfs_db> blockuse
+block 72256 (0/72256) type rldata inode 25169197
+----
+
+The blockuse type changes to ``rldata'' to indicate that the block is shared
+data.  Unfortunately, blockuse only tells us about one block owner.  If we
+happen to have enabled the reverse-mapping B+tree, we can use it to find all
+inodes that own this block:
+
+----
+xfs_db> agf 0
+xfs_db> addr rmaproot
+...
+xfs_db> addr ptrs[3]
+...
+xfs_db> addr ptrs[7]
+xfs_db> p
+magic = 0x524d4233
+level = 0
+numrecs = 22
+leftsib = 65057
+rightsib = 65058
+bno = 291478
+lsn = 0x200004ec2
+uuid = f1f89746-e00b-49c9-96b3-ecef0f2f14ae
+owner = 0
+crc = 0xed7da3f7 (correct)
+recs[1-22] = [startblock,blockcount,owner,offset,extentflag,attrfork,bmbtblock]
+        1:[68957,8,3201,0,0,0,0] 2:[68965,4,25260953,0,0,0,0]
+        ...
+        18:[72232,58,3227,0,0,0,0] 19:[72256,16,25169197,24,0,0,0]
+        20:[72290,75,3228,0,0,0,0] 21:[72365,46,3229,0,0,0,0]
+----
+
+Records 18 and 19 intersect the block 72,256; they tell us that inodes 3,227
+and 25,169,197 both claim ownership.  Let us confirm this:
+
+----
+xfs_db> inode 25169197
+xfs_db> bmap
+data offset 0 startblock 12632259 (3/49347) count 24 flag 0
+data offset 24 startblock 72256 (0/72256) count 16 flag 0
+data offset 40 startblock 12632299 (3/49387) count 18 flag 0
+xfs_db> inode 3227
+xfs_db> bmap
+data offset 0 startblock 72232 (0/72232) count 58 flag 0
+----
+
+Inodes 25,169,197 and 3,227 both contain mappings to block 0/72,256.

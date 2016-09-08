@@ -109,7 +109,8 @@ struct xfs_dinode_core {
      __be64                    di_changecount;
      __be64                    di_lsn;
      __be64                    di_flags2;
-     __u8                      di_pad2[16];
+     __be32                    di_cowextsize;
+     __u8                      di_pad2[12];
      xfs_timestamp_t           di_crtime;
      __be64                    di_ino;
      uuid_t                    di_uuid;
@@ -215,7 +216,7 @@ including relevant metadata like B+trees. This does not include blocks used for
 extended attributes.
 
 *di_extsize*::
-Specifies the extent size for filesystems with real-time devices and an extent
+Specifies the extent size for filesystems with real-time devices or an extent
 size hint for standard filesystems. For normal filesystems, and with
 directories, the +XFS_DIFLAG_EXTSZINHERIT+ flag must be set in +di_flags+ if
 this field is used. Inodes created in these directories will inherit the
@@ -279,7 +280,7 @@ For directory inodes, new inodes inherit the +di_projid+ value.
 For directory inodes, symlinks cannot be created.
 
 | +XFS_DIFLAG_EXTSIZE+		|
-Specifies the extent size for real-time files or a and extent size hint for regular files.
+Specifies the extent size for real-time files or an extent size hint for regular files.
 
 | +XFS_DIFLAG_EXTSZINHERIT+	|
 For directory inodes, new inodes inherit the +di_extsize+ value.
@@ -323,7 +324,25 @@ Specifies extended flags associated with a v3 inode.
 | +XFS_DIFLAG2_DAX+		|
 For a file, enable DAX to increase performance on persistent-memory storage.
 If set on a directory, files created in the directory will inherit this flag.
+| +XFS_DIFLAG2_REFLINK+		|
+This inode shares (or has shared) data blocks with another inode.
+| +XFS_DIFLAG2_COWEXTSIZE+	|
+For files, this is the extent size hint for copy on write operations; see
++di_cowextsize+ for details.  For directories, the value in +di_cowextsize+
+will be copied to all newly created files and directories.
 |=====
+
+*di_cowextsize*::
+Specifies the extent size hint for copy on write operations.  When allocating
+extents for a copy on write operation, the allocator will be asked to align
+its allocations to either +di_cowextsize+ blocks or +di_extsize+ blocks,
+whichever is greater.  The +XFS_DIFLAG2_COWEXTSIZE+ flag must be set if this
+field is used.  If this field and its flag are set on a directory file, the
+value will be copied into any files or directories created within this
+directory.  During a block sharing operation, this value will be copied from
+the source file to the destination file if the sharing operation completely
+overwrites the destination file's contents and the destination file does not
+already have +di_cowextsize+ set.
 
 *di_pad2*::
 Padding for future expansion of the inode.
