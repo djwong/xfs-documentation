@@ -203,9 +203,10 @@ u.bmx[0-1] = [startoff,startblock,blockcount,extentflag]
 [[Btree_Extent_List]]
 == B+tree Extent List
 
-To manage extent maps that cannot fit in the inode fork area, XFS uses long
-format B+trees.  The root node of the B+tree is stored in the inode's data
-fork.  All block pointers for extent B+trees are 64-bit absolute block numbers.
+To manage extent maps that cannot fit in the inode fork area, XFS uses
+xref:Long_Format_Btrees[long format B+trees].  The root node of the B+tree is
+stored in the inode's data fork.  All block pointers for extent B+trees are
+64-bit filesystem block numbers.
 
 For a single level B+tree, the root node points to the B+tree's leaves. Each
 leaf occupies one filesystem block and contains a header and an array of extents
@@ -242,69 +243,8 @@ standard 256 byte inode before a new level of nodes is added between the root
 and the leaves. This will be less if +di_forkoff+ is not zero (i.e. attributes
 are in use on the inode).
 
-[[Long_Format_Btrees]]
-=== Long Format B+trees
-
-The subsequent nodes and leaves of the B+tree use the +xfs_btree_lblock+
-declaration:
-
-[source, c]
-----
-struct xfs_btree_lblock {
-     __be32                    bb_magic;
-     __be16                    bb_level;
-     __be16                    bb_numrecs;
-     __be64                    bb_leftsib;
-     __be64                    bb_rightsib;
-
-     /* version 5 filesystem fields start here */
-     __be64                    bb_blkno;
-     __be64                    bb_lsn;
-     uuid_t                    bb_uuid;
-     __be64                    bb_owner;
-     __le32                    bb_crc;
-     __be32                    bb_pad;
-};
-----
-
-*bb_magic*::
-Specifies the magic number for the BMBT block: ``BMAP'' (0x424d4150).
-On a v5 filesystem, this is ``BMA3'' (0x424d4133).
-
-*bb_level*::
-The level of the tree in which this block is found.  If this value is 0, this
-is a leaf block and contains records; otherwise, it is a node block and
-contains keys and pointers.
-
-*bb_numrecs*::
-Number of records in this block.
-
-*bb_leftsib*::
-FS block number of the left sibling of this B+tree node.
-
-*bb_rightsib*::
-FS block number of the right sibling of this B+tree node.
-
-*bb_blkno*::
-FS block number of this B+tree block.
-
-*bb_lsn*::
-Log sequence number of the last write to this block.
-
-*bb_uuid*::
-The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
-depending on which features are set.
-
-*bb_owner*::
-The AG number that this B+tree block ought to be in.
-
-*bb_crc*::
-Checksum of the B+tree block.
-
-*bb_pad*::
-Pads the structure to 64 bytes.
-
-// force-split the lists
+* The magic number for a BMBT block is ``BMAP'' (0x424d4150).  On a v5
+filesystem, this is ``BMA3'' (0x424d4133).
 
 * For intermediate nodes, the data following +xfs_btree_lblock+ is the same as
 the root node: array of +xfs_bmbt_key+ value followed by an array of

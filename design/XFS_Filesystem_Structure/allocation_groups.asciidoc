@@ -612,65 +612,6 @@ Checksum of the AGF sector.
 *agf_spare2*::
 Empty space in the unlogged part of the AGF sector.
 
-[[Short_Format_Btrees]]
-=== Short Format B+trees
-
-Each allocation group uses a ``short format'' B+tree to index various
-information about the allocation group.  The structure is called short format
-because all block pointers are AG block numbers.  The trees use the following
-header:
-
-[source, c]
-----
-struct xfs_btree_sblock {
-     __be32                    bb_magic;
-     __be16                    bb_level;
-     __be16                    bb_numrecs;
-     __be32                    bb_leftsib;
-     __be32                    bb_rightsib;
-
-     /* version 5 filesystem fields start here */
-     __be64                    bb_blkno;
-     __be64                    bb_lsn;
-     uuid_t                    bb_uuid;
-     __be32                    bb_owner;
-     __le32                    bb_crc;
-};
-----
-
-*bb_magic*::
-Specifies the magic number for the per-AG B+tree block.
-
-*bb_level*::
-The level of the tree in which this block is found.  If this value is 0, this
-is a leaf block and contains records; otherwise, it is a node block and
-contains keys and pointers.
-
-*bb_numrecs*::
-Number of records in this block.
-
-*bb_leftsib*::
-AG block number of the left sibling of this B+tree node.
-
-*bb_rightsib*::
-AG block number of the right sibling of this B+tree node.
-
-*bb_blkno*::
-FS block number of this B+tree block.
-
-*bb_lsn*::
-Log sequence number of the last write to this block.
-
-*bb_uuid*::
-The UUID of this block, which must match either +sb_uuid+ or +sb_meta_uuid+
-depending on which features are set.
-
-*bb_owner*::
-The AG number that this B+tree block ought to be in.
-
-*bb_crc*::
-Checksum of the B+tree block.
-
 [[AG_Free_Space_Btrees]]
 === AG Free Space B+trees
 

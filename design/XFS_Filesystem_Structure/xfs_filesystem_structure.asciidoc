@@ -62,6 +62,8 @@ Global Structures
 
 :leveloffset: 1
 
+include::btrees.asciidoc[]
+
 include::allocation_groups.asciidoc[]
 
 include::journaling_log.asciidoc[]
