@@ -105,6 +105,7 @@ struct xfs_sb
 	xfs_ino_t		sb_pquotino;
 	xfs_lsn_t		sb_lsn;
 	uuid_t			sb_meta_uuid;
+	xfs_ino_t		sb_rrmapino;
 };
 ----
 *sb_magicnum*::
@@ -448,6 +449,13 @@ Log sequence number of the last superblock update.
 If the +XFS_SB_FEAT_INCOMPAT_META_UUID+ feature is set, then the UUID field in
 all metadata blocks must match this UUID.  If not, the block header UUID field
 must match +sb_uuid+.
+
+*sb_rrmapino*::
+If the +XFS_SB_FEAT_RO_COMPAT_RMAPBT+ feature is set and a real-time
+device is present (+sb_rblocks+ > 0), this field points to an inode
+that contains the root to the
+xref:Real_time_Reverse_Mapping_Btree[Real-Time Reverse Mapping B+tree].
+This field is zero otherwise.
 
 === xfs_db Superblock Example
 

@@ -201,3 +201,5 @@ rtbitmap location, and positive if there are any.
 This data structure is not particularly space efficient, however it is a very
 fast way to provide the same data as the two free space B+trees for regular
 files since the space is preallocated and metadata maintenance is minimal.
+
+include::rtrmapbt.asciidoc[]

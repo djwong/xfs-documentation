@@ -141,4 +141,18 @@
 			</simplelist>
 		</revdescription>
 	</revision>
+	<revision>
+		<revnumber>3.1415</revnumber>
+		<date>July 2016</date>
+		<author>
+			<firstname>Darrick</firstname>
+			<surname>Wong</surname>
+			<email></email>
+		</author>
+		<revdescription>
+			<simplelist>
+				<member>Document the real-time reverse-mapping btree.</member>
+			</simplelist>
+		</revdescription>
+	</revision>
 </revhistory>

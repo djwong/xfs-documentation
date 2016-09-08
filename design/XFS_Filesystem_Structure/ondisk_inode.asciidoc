@@ -141,7 +141,8 @@ the associated metadata or data; or ``btree'' where the inode contains a B+tree
 root node which points to filesystem blocks containing the metadata or data.
 Migration between the formats depends on the amount of metadata associated with
 the inode. ``dev'' is used for character and block devices while ``uuid'' is
-currently not used.
+currently not used.  ``rmap'' indicates that a reverse-mapping B+tree
+is rooted in the fork.
 
 [source, c]
 ----
@@ -150,7 +151,8 @@ typedef enum xfs_dinode_fmt {
      XFS_DINODE_FMT_LOCAL,
      XFS_DINODE_FMT_EXTENTS,
      XFS_DINODE_FMT_BTREE,
-     XFS_DINODE_FMT_UUID
+     XFS_DINODE_FMT_UUID,
+     XFS_DINODE_FMT_RMAP,
 } xfs_dinode_fmt_t;
 ----
 
