@@ -636,7 +636,7 @@ The size of the reference count B+tree in this allocation group, in blocks.
 *agf_refcount_root*::
 Block number for the root of the reference count B+tree, if enabled.
 
-*agf_refcount_root*::
+*agf_refcount_level*::
 Depth of the reference count B+tree, if enabled.
 
 *agf_spare64*::
