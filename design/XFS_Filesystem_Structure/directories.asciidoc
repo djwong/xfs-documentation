@@ -26,6 +26,35 @@ directories.
 
 * An +offset+ or +tag+ used for iterative readdir calls.
 
+* If the +XFS_SB_FEAT_INCOMPAT_FTYPE+ feature flag is set, each
+directory entry contains an +ftype+ field that caches the inode's type
+to avoid having to perform an inode lookup.
+
+.ftype values
+[options="header"]
+|=====
+| Flag				| Description
+| +XFS_DIR3_FT_UNKNOWN+ |
+Entry points to an unknown inode type.  This should never appear on disk.
+| +XFS_DIR3_FT_REG_FILE+ |
+Entry points to a file.
+| +XFS_DIR3_FT_DIR+ |
+Entry points to another directory.
+| +XFS_DIR3_FT_CHRDEV+ |
+Entry points to a character device.
+| +XFS_DIR3_FT_BLKDEV+ |
+Entry points to a block device.
+| +XFS_DIR3_FT_FIFO+ |
+Entry points to a FIFO.
+| +XFS_DIR3_FT_SOCK+ |
+Entry points to a socket.
+| +XFS_DIR3_FT_SYMLINK+ |
+Entry points to a symbolic link.
+| +XFS_DIR3_FT_WHT+ |
+Entry points to an overlayfs whiteout file.  This (as far as the author
+knows) has never appeared on disk.
+|=====
+
 All non-shortform directories also contain two additional structures: ``leaves''
 and ``freespace indexes''.
 
