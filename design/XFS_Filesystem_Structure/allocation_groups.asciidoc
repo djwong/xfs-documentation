@@ -174,7 +174,13 @@ indicate features introduced over time. If the value of the lower nibble is >=
 [options="header"]
 |=====
 | Flag				| Description
-| +XFS_SB_VERSION_ATTRBIT+	| Set if any inode have extended attributes.
+| +XFS_SB_VERSION_ATTRBIT+	|
+Set if any inode have extended attributes.  If this bit is set; the
++XFS_SB_VERSION2_ATTR2BIT+ is not set; and the +attr2+ mount flag is not
+specified, the +di_forkoff+ inode field will not be dynamically adjusted.
+See the section about xref:Extended_Attribute_Versions[extended attribute
+versions] for more information.
+
 | +XFS_SB_VERSION_NLINKBIT+	| Set if any inodes use 32-bit di_nlink values.
 | +XFS_SB_VERSION_QUOTABIT+	|
 Quotas are enabled on the filesystem. This
@@ -335,10 +341,11 @@ performance. The global free space and inode counts are only updated in the
 primary superblock when the filesystem is cleanly unmounted.
 
 | +XFS_SB_VERSION2_ATTR2BIT+	|
-Extended attributes version 2. Making a filesystem with this optimises the inode
-layout of extended attributes.  See the section about
-xref:Extended_Attribute_Versions[extended attribute versions] for more
-information.
+Extended attributes version 2. Making a filesystem with this optimises the
+inode layout of extended attributes.  If this bit is set and the +noattr2+
+mount flag is not specified, the +di_forkoff+ inode field will be dynamically
+adjusted.  See the section about xref:Extended_Attribute_Versions[extended
+attribute versions] for more information.
 
 | +XFS_SB_VERSION2_PARENTBIT+	|
 Parent pointers. All inodes must have an extended attribute that points back to
