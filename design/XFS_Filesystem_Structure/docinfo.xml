@@ -155,4 +155,18 @@
 			</simplelist>
 		</revdescription>
 	</revision>
+	<revision>
+		<revnumber>3.14159</revnumber>
+		<date>June 2017</date>
+		<author>
+			<firstname>Darrick</firstname>
+			<surname>Wong</surname>
+			<email>darrick.wong@oracle.com</email>
+		</author>
+		<revdescription>
+			<simplelist>
+				<member>Add the metadump file format.</member>
+			</simplelist>
+		</revdescription>
+	</revision>
 </revhistory>

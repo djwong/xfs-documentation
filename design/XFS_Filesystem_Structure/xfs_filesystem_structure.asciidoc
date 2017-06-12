@@ -96,3 +96,12 @@ include::extended_attributes.asciidoc[]
 include::symbolic_links.asciidoc[]
 
 :leveloffset: 0
+
+Auxiliary Data Structures
+=========================
+
+:leveloffset: 1
+
+include::metadump.asciidoc[]
+
+:leveloffset: 0
