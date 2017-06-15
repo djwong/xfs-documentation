@@ -34,7 +34,7 @@ design goals.
 The information contained in this document derives from the XFS source code in
 the Linux kernel as of v4.3.  This book's source code is available at
 +git://git.kernel.org/pub/scm/fs/xfs/xfs-documentation.git+.  Feedback should
-be sent to the XFS mailing list, currently at +xfs@oss.sgi.com+.
+be sent to the XFS mailing list, currently at +linux-xfs@vger.kernel.org+.
 
 [NOTE]
 All fields in XFS metadata structures are in big-endian byte order except for
