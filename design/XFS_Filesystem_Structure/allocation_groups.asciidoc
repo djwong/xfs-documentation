@@ -282,6 +282,10 @@ Quota flags. It can be a combination of the following flags:
 | +XFS_OQUOTA_ENFD+		| Other (group/project) quotas are enforced.
 | +XFS_OQUOTA_CHKD+		| Other (group/project) quotas have been checked.
 | +XFS_GQUOTA_ACCT+		| Group quota accounting is enabled.
+| +XFS_GQUOTA_ENFD+		| Group quotas are enforced.
+| +XFS_GQUOTA_CHKD+		| Group quotas have been checked.
+| +XFS_PQUOTA_ENFD+		| Project quotas are enforced.
+| +XFS_PQUOTA_CHKD+		| Project quotas have been checked.
 |=====
 
 *sb_flags*::
