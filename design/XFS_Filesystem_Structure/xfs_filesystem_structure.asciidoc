@@ -68,6 +68,8 @@ Global Structures
 
 include::btrees.asciidoc[]
 
+include::dabtrees.asciidoc[]
+
 include::allocation_groups.asciidoc[]
 
 include::rmapbt.asciidoc[]

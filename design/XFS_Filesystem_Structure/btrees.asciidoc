@@ -1,4 +1,4 @@
-= B+trees
+= Fixed Length Record B+trees
 
 XFS uses b+trees to index all metadata records.  This well known data structure
 is used to provide efficient random and sequential access to metadata records
