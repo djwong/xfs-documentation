@@ -1221,10 +1221,14 @@ The magic number of the free block, ``XD2F'' (0x0x58443246).
 The starting directory block number for the bests array.
 
 *nvalid*::
-Number of elements in the bests array.
+Number of valid elements in the bests array.  This number must
+correspond with the number of directory blocks can fit under the inode
++di_size+.
 
 *nused*::
-Number of valid elements in the bests array.
+Number of used elements in the bests array.  This number must correspond
+with the number of directory blocks actually mapped under the inode
++di_size+.
 
 [source, c]
 ----
@@ -1262,10 +1266,14 @@ v3 directory block header.  The magic number is "XDF3" (0x0x58444633).
 The starting directory block number for the bests array.
 
 *nvalid*::
-Number of elements in the bests array.
+Number of valid elements in the bests array.  This number must
+correspond with the number of directory blocks can fit under the inode
++di_size+.
 
 *nused*::
-Number of valid elements in the bests array.
+Number of used elements in the bests array.  This number must correspond
+with the number of directory blocks actually mapped under the inode
++di_size+.
 
 *pad*::
 Padding to maintain alignment.
@@ -1304,9 +1312,9 @@ value is decremented and the associated +bests[]+ entry is set to 0xffff.
 * As the first data block always contains ``.'' and ``..'', it's invalid for the
 directory to have a hole at the start.
 
-* The freeindex's +hdr.nvalid+ should always be the same as the number of
+* The freeindex's +hdr.nused+ should always be the same as the number of
 allocated data directory blocks containing name/inode data and will always be
-less than or equal to +hdr.nused+.  The value of +hdr.nused+ should be the same
+less than or equal to +hdr.nvalid+.  The value of +hdr.nvalid+ should be the same
 as the index of the last data directory block plus one (i.e. when the last data
 block is freed, +nused+ and +nvalid+ are decremented).
 
