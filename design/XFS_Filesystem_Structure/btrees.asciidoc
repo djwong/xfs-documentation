@@ -104,7 +104,7 @@ Specifies the magic number for the per-AG B+tree block.
 *bb_level*::
 The level of the tree in which this block is found.  If this value is 0, this
 is a leaf block and contains records; otherwise, it is a node block and
-contains keys and pointers.
+contains keys and pointers.  Level values increase towards the root.
 
 *bb_numrecs*::
 Number of records in this block.

@@ -170,7 +170,9 @@ Directory/attribute block info.  The magic number is +XFS_DA_NODE_MAGIC+
 Number of node entries in this block.
 
 *level*::
-The level of this block in the B+tree.
+The level of this block in the B+tree.  Levels start at 1 for blocks
+that point to directory or attribute data blocks and increase towards
+the root.
 
 *hashval*::
 The hash value of a particular record.
@@ -206,7 +208,9 @@ Directory/attribute block info.  The magic number is +XFS_DA3_NODE_MAGIC+
 Number of node entries in this block.
 
 *level*::
-The level of this block in the B+tree.
+The level of this block in the B+tree.  Levels start at 1 for blocks
+that point to directory or attribute data blocks, and increase towards
+the root.
 
 *pad32*::
 Padding to maintain alignment.

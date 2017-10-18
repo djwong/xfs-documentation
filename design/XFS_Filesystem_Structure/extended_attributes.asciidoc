@@ -473,6 +473,7 @@ typedef struct xfs_attr3_leaf_hdr {
      __u8                       holes;
      __u8                       pad1;
      xfs_attr_leaf_map_t        freemap[3];
+     __be32                     pad2;
 } xfs_attr3_leaf_hdr_t;
 
 

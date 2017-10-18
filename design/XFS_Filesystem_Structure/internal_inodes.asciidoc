@@ -59,7 +59,7 @@ struct xfs_disk_dquot {
 };
 struct xfs_dqblk {
      struct xfs_disk_dquot dd_diskdq;
-     char                  dd_fill[32];
+     char                  dd_fill[4];
 
      /* version 5 filesystem fields begin here */
      __be32                dd_crc;
