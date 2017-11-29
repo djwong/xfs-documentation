@@ -217,6 +217,18 @@ magic number to distinguish themselves.  Buffer data items only appear after
 | +XFS_LI_BUD+			| 0x1245        | xref:BUD_Log_Item[File Block Mapping Update Done]
 |=====
 
+Note that all log items (except for transaction headers) MUST start with
+the following header structure.  The type and size fields are baked into
+each log item header, but there is not a separately defined header.
+
+[source, c]
+----
+struct xfs_log_item {
+     __uint16_t                magic;
+     __uint16_t                size;
+};
+----
+
 [[Log_Transaction_Headers]]
 === Transaction Headers
 
