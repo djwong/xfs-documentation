@@ -6,7 +6,7 @@ This data structure is under construction!  Details may change.
 
 To support the sharing of file data blocks (reflink), each allocation group has
 its own reference count B+tree, which grows in the allocated space like the
-inode B+trees.  This data could be gleaned by performing an interval query of
+inode B+trees.  This data could be cleaned by performing an interval query of
 the reverse-mapping B+tree, but doing so would come at a huge performance
 penalty.  Therefore, this data structure is a cache of computable information.
 

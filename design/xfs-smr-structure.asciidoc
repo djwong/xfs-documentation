@@ -67,7 +67,7 @@ next to the metadata zone, but typically metadata writes are not correlated with
 log writes.
 
 Hence the only real functionality we need to add to the log is the tail pushing
-modificaitons to move the tail into the same zone as the head, as well as being
+modifications to move the tail into the same zone as the head, as well as being
 able to trigger and block on zone write pointer reset operations.
 
 The log doesn't actually need to track the zone write pointer, though log
@@ -90,7 +90,7 @@ packed extent allocation only) to ensure that newly written blocks are allocated
 in a sane manner.
 
 We're going to need userspace to be able to see the contents of these inodes;
-read only access wil be needed to analyse the contents of the zone, so we're
+read only access will be needed to analyse the contents of the zone, so we're
 going to need a special directory to expose this information. It would be useful
 to have a ".zones" directory hanging off the root directory that contains all
 the zone allocation inodes so userspace can simply open them.
@@ -112,14 +112,14 @@ also have other benefits...
 While it seems like tracking free space is trivial for the purposes of
 allocation (and it is!), the complexity comes when we start to delete or
 overwrite data. Suddenly zones no longer contain contiguous ranges of valid
-data; they have "freed" extents in the middle of them that contian stale data.
+data; they have "freed" extents in the middle of them that contain stale data.
 We can't use that "stale space" until the entire zone is made up of "stale"
 extents. Hence we need a Cleaner.
 
 === Zone Cleaner
 
 The purpose of the cleaner is to find zones that are mostly stale space and
-consolidate the remaining referenced data into a new, contigious zone, enabling
+consolidate the remaining referenced data into a new, contiguous zone, enabling
 us to then "clean" the stale zone and make it available for writing new data
 again.
 
@@ -129,7 +129,7 @@ parent pointer functionality. This gives us the mechanism by which we can
 quickly re-organise files that have extents in zones that need cleaning.
 
 The key word here is "reorganise". We have a tool that already reorganises file
-layout: xfs_fsr. The "Cleaner" is a finely targetted policy for xfs_fsr -
+layout: xfs_fsr. The "Cleaner" is a finely targeted policy for xfs_fsr -
 instead of trying to minimise fixpel fragments, it finds zones that need
 cleaning by reading their summary info from the /.zones/ directory and analysing
 the free bitmap state if there is a high enough percentage of stale blocks. From
@@ -200,7 +200,7 @@ random write space for all our metadata......
 
 A basic guideline is that for 4k blocks and zones of 256MB, we'll need 8kB of
 bitmap space and two inodes, so call it 10kB per 256MB zone. That's 40MB per TB
-for free space bitmaps. We'll want to suport at least 1 million inodes per TB,
+for free space bitmaps. We'll want to support at least 1 million inodes per TB,
 so that's another 512MB per TB, plus another 256MB per TB for directory
 structures. There's other bits and pieces of metadata as well (attribute space,
 internal freespace btrees, reverse map btrees, etc.
@@ -316,7 +316,7 @@ spiral.
 I suspect the best we will be able to do with fallocate based preallocation is
 to mark the region as delayed allocation.
 
-=== Allocation Alignemnt
+=== Allocation Alignment
 
 With zone based write pointers, we lose all capability of write alignment to the
 underlying storage - our only choice to write is the current set of write
