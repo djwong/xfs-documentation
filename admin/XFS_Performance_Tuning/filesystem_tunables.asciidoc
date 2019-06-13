@@ -35,7 +35,7 @@ units as used on the +mkfs.xfs+ command line to configure these parameters.
 The performance examples given in this section are highly dependent on storage,
 CPU and RAM configuration. They are intended as guidelines to illustrate
 behavioural differences, not the exact performance any configuration will
-acheive.
+achieve.
 =====
 
 === Directory block size
@@ -238,7 +238,7 @@ available for storing attributes.
 When attributes are stored in the literal area of the inode, both attribute
 names and attribute values are limited to a maximum size of 254 bytes. If either
 name or value exceeds 254 bytes in length, or the total space used by the
-atributes exceeds the size of the literal area, the entire set of attributes
+attributes exceeds the size of the literal area, the entire set of attributes
 stored on the inode are pushed to a separate attribute block instead of being
 stored inline.
 
@@ -359,7 +359,7 @@ than the maximum, and hence there is no need to reduce the log buffer size for
 fsync heavy workloads.
 
 The default size of the log buffer is 32KB. The maximum size is 256KB and other
-supported sizes are 64KB, 128KB or power of 2 mulitples of the log stripe unit
+supported sizes are 64KB, 128KB or power of 2 multiples of the log stripe unit
 between 32KB and 256KB. It can be configured by use of the +logbsize+ mount
 option.
 

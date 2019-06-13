@@ -42,8 +42,8 @@ xref:Knowledge[Knowledge Section].
 
 The xref:Process[Process section] will cover the typical processes used to
 optimise a filesystem for a given workload. If the workload measurements are not
-accurate or reproducable, then no conclusions can be drawn as to whether a
-configuration changes an improvemnt or not. Hence without a robust testing
+accurate or reproducible, then no conclusions can be drawn as to whether a
+configuration changes an improvement or not. Hence without a robust testing
 process, no amount of knowledge or observation will result in a well optimised
 filesystem configuration.
 

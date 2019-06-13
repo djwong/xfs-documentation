@@ -460,7 +460,7 @@ size of these entries is determined dynamically.
 A variable-length array of descriptors of remote attributes.  The location and
 size of these entries is determined dynamically.
 
-On a v5 filesystem, the header becomes +xfs_da3_blkinfo_t+ to accomodate the
+On a v5 filesystem, the header becomes +xfs_da3_blkinfo_t+ to accommodate the
 extra metadata integrity fields:
 
 [source, c]

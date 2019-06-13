@@ -810,7 +810,7 @@ missing the +ilf_pad+ field and is 52 bytes long as opposed to 56 bytes.
 This region contains the new contents of a part of an inode, as described in
 the xref:Inode_Log_Item[previous section].  There are no magic numbers.
 
-If +XFS_ILOG_CORE+ is set in +ilf_fields+, the correpsonding data buffer must
+If +XFS_ILOG_CORE+ is set in +ilf_fields+, the corresponding data buffer must
 be in the format +struct xfs_icdinode+, which has the same format as the first
 96 bytes of an xref:On-disk_Inode[inode], but is recorded in host byte order.
 
